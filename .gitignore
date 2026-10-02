@@ -1,0 +1,32 @@
+#ZDJECIA
+data/
+
+#WAGI MODELU
+*.pt
+
+#KATALOG Z PRZEBIEGAMI TRENINGU
+runs/
+
+#SRODOWISKO WIRTUALNE
+.venv/
+
+#SMIECI PYTHONA
+__pycache__/
+*.pyc
+
+#AUTOZAPISY JUPYTERA
+*.ipynb_checkpoints
+
+#SMIECI MACOS
+.DS_Store
+
+#ROBOCZE PLIKI PREDYKCJI
+/test_predictions.json
+
+#LOKALNE INSTRUKCJE AGENTA
+/GIT.md
+/CLAUDE.md
+
+#to remove from .gitignore later on
+/predictions.json
+submissions/
