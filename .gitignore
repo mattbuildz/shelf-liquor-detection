@@ -22,11 +22,12 @@ __pycache__/
 
 #ROBOCZE PLIKI PREDYKCJI
 /test_predictions.json
+splits/val_ground_truth.json
+splits/val_perfect_predictions.json
 
 #LOKALNE INSTRUKCJE AGENTA
 /GIT.md
 /CLAUDE.md
 
 #to remove from .gitignore later on
-/predictions.json
 submissions/
