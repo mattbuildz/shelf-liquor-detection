@@ -35,5 +35,5 @@ dictionary = {
 
 
 
-with open("splits/answer_bundle.json", "w", encoding="utf-8") as f:
+with open("splits/val_ground_truth.json", "w", encoding="utf-8") as f:
     json.dump(dictionary, f, ensure_ascii=False, indent=2)
