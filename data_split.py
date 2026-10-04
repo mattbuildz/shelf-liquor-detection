@@ -17,12 +17,13 @@ real_images = [img["id"] for img in images if img["source_dataset"] == "DPR_MIR_
 
 print(len(real_images))
 
-random.seed(1)
-validation_images = random.sample(real_images, 200)
+random.seed(2)
+validation_images = random.sample(real_images, 300)
 
 os.makedirs("splits", exist_ok=True)
 
 with open("splits/val_image_ids.json", "w", encoding="utf-8") as f:
     json.dump(validation_images, f, ensure_ascii=False, indent=2)
+
 
 
