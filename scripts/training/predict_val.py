@@ -2,7 +2,7 @@ import json
 import os
 from ultralytics import YOLO
 
-WEIGHTS = "runs/detect/a-real-640/weights/best.pt"   # take the path from the training log
+WEIGHTS = "runs/detect/a2-adamw-lr001/weights/best.pt"   # take the path from the training log
 IMGSZ = 640                                     # same as in training
 
 with open("splits/val_ground_truth.json", "r", encoding="utf-8") as f:

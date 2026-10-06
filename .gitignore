@@ -26,6 +26,7 @@ __pycache__/
 
 #ROBOCZE PLIKI TRENINGU
 scripts/training/dataset.yaml
+data/train.zip
 
 #LOKALNE INSTRUKCJE AGENTA
 /GIT.md
