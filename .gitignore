@@ -24,6 +24,8 @@ __pycache__/
 /test_predictions.json
 /splits
 
+#ROBOCZE PLIKI TRENINGU
+scripts/training/dataset.yaml
 
 #LOKALNE INSTRUKCJE AGENTA
 /GIT.md
