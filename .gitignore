@@ -22,8 +22,8 @@ __pycache__/
 
 #ROBOCZE PLIKI PREDYKCJI
 /test_predictions.json
-splits/val_ground_truth.json
-splits/val_perfect_predictions.json
+/splits
+
 
 #LOKALNE INSTRUKCJE AGENTA
 /GIT.md
