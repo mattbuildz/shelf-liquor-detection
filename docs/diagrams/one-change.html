@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelf product detection · one change</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-paper-2: #ececec;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-soft:    #7a8399;
+      --color-rule:    rgba(45,49,66,0.12);
+      --color-accent:  #eb6c36;
+      --color-accent-tint: rgba(235,108,54,0.08);
+      --color-card:    #ffffff;
+      --color-card-stroke: rgba(45,49,66,0.22);
+      --color-panel:   #2d3142;
+      --color-on-panel: #f5f5f5;
+      --color-on-panel-muted: #a3abbd;
+      --color-panel-accent: #f08a59;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    h1 { font-family: var(--font-serif); font-size: 2rem; font-weight: 400; margin-bottom: 1.5rem; }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+
+    /* Type */
+    .bg        { fill: var(--color-paper); }
+    .eyebrow-t { font-family: var(--font-mono);  font-size: 11px; font-weight: 500; letter-spacing: 0.14em; fill: var(--color-muted); }
+    .headline  { font-family: var(--font-serif); font-size: 46px; fill: var(--color-ink); letter-spacing: -0.02em; }
+    .name      { font-family: var(--font-sans);  font-size: 14px; font-weight: 600; fill: var(--color-ink); }
+    .body      { font-family: var(--font-sans);  font-size: 13px; fill: var(--color-muted); }
+    .note      { font-family: var(--font-mono);  font-size: 11px; fill: var(--color-soft); }
+    .tick      { font-family: var(--font-mono);  font-size: 11px; fill: var(--color-soft); text-anchor: middle; }
+    .val-a     { font-family: var(--font-mono);  font-size: 12px; fill: var(--color-muted); }
+    .val-b     { font-family: var(--font-mono);  font-size: 13px; font-weight: 600; fill: var(--color-ink); }
+    .stat      { font-family: var(--font-serif); font-size: 34px; fill: var(--color-ink); }
+    .tag       { font-family: var(--font-mono);  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; fill: var(--color-muted); }
+
+    /* Code panel */
+    .panel      { fill: var(--color-panel); }
+    .panel-rule { stroke: var(--color-on-panel-muted); stroke-opacity: 0.3; stroke-width: 1; }
+    .added      { fill: var(--color-panel-accent); fill-opacity: 0.22; }
+    .file       { font-family: var(--font-mono); font-size: 11px; fill: var(--color-on-panel-muted); }
+    .code       { font-family: var(--font-mono); font-size: 12px; fill: var(--color-on-panel-muted); }
+    .code-add   { font-family: var(--font-mono); font-size: 12px; font-weight: 600; fill: var(--color-on-panel); }
+    .plus       { font-family: var(--font-mono); font-size: 12px; font-weight: 600; fill: var(--color-panel-accent); }
+
+    /* Chart */
+    .grid      { stroke: var(--color-rule); stroke-width: 1; }
+    .axis      { stroke: var(--color-soft); stroke-width: 1; }
+    .link      { stroke: var(--color-soft); stroke-width: 2; }
+    .dot-a     { fill: var(--color-paper); stroke: var(--color-muted); stroke-width: 1.5; }
+    .dot-b     { fill: var(--color-accent); }
+    .rule      { stroke: var(--color-rule); stroke-width: 1; }
+
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <h1>One change between run A and run A2</h1>
+
+    <div class="diagram-container">
+      <!-- Numbers that depend on the runs carry data-run. List them with: grep -n data-run docs/diagrams/one-change.html
+           Chart scale: x = 612 + value * 417.14, so 0 sits at 612 and 0.7 at 904. -->
+      <svg viewBox="0 0 960 656" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="one-change-title one-change-desc">
+        <title id="one-change-title">Two added lines of training config and what they moved</title>
+        <desc id="one-change-desc">Run A and run A2 use the same pretrained YOLOv8n, the same 823 real training photos, image size 640, batch 16 and 50 epochs. Run A2 adds two lines to the training call: optimizer AdamW and lr0 0.001. Before that, the automatic optimizer setting ignored lr0 and picked AdamW at a learning rate of 2.7e-05, about 370 times below the 0.01 default. On the 300 validation photos mAP at 0.5 went from 0.024 to 0.455, AP at 0.75 from 0.022 to 0.422, recall from 0.050 to 0.46 and precision from 0.51 to 0.63. Class loss at epoch 19 fell from 5.06 to 1.89.</desc>
+
+        <rect class="bg" width="100%" height="100%"/>
+
+        <!-- Header -->
+        <text class="eyebrow-t" x="40" y="52">RUN A TO RUN A2 · ABOUT AN HOUR EACH ON A MAC M4</text>
+        <text class="headline" x="40" y="104" data-run="story">Two added lines. About 19 times the score.</text>
+
+        <!-- Code panel: the training call, with the two lines run A2 added -->
+        <rect class="panel" x="40" y="136" width="412" height="312" rx="6"/>
+        <text class="file" x="60" y="164">scripts/training/train.py</text>
+        <text class="file" x="432" y="164" text-anchor="end">diff A to A2</text>
+        <line class="panel-rule" x1="40" y1="176" x2="452" y2="176"/>
+        <rect class="added" x="40" y="251" width="412" height="44"/>
+
+        <text class="code" x="80" y="200">model = YOLO("yolov8n.pt")</text>
+        <text class="code" x="80" y="222">model.train(</text>
+        <text class="code" x="109" y="244">data="scripts/training/dataset.yaml",</text>
+        <text class="plus" x="60" y="266">+</text>
+        <text class="code-add" x="109" y="266">optimizer="AdamW",</text>
+        <text class="plus" x="60" y="288">+</text>
+        <text class="code-add" x="109" y="288">lr0=0.001,</text>
+        <text class="code" x="109" y="310">cache="ram",</text>
+        <text class="code" x="109" y="332">epochs=50,</text>
+        <text class="code" x="109" y="354">imgsz=640,</text>
+        <text class="code" x="109" y="376">batch=16,</text>
+        <text class="code" x="109" y="398">device="mps",</text>
+        <text class="code" x="80" y="420">)</text>
+
+        <text class="body" x="40" y="474">Before, optimizer=auto ignored lr0 and picked AdamW at</text>
+        <text class="body" x="40" y="492">lr 2.7e-05, about 370 times below the 0.01 default.</text>
+        <text class="note" x="40" y="512">code trimmed, constants inlined</text>
+
+        <!-- Chart: before and after on one 0 to 0.7 scale -->
+        <circle class="dot-a" cx="498" cy="148" r="5"/>
+        <text class="body" x="510" y="152">run A</text>
+        <circle class="dot-b" cx="566" cy="148" r="6"/>
+        <text class="body" x="578" y="152">run A2</text>
+
+        <line class="axis" x1="612" y1="176" x2="612" y2="416"/>
+        <line class="grid" x1="695.4" y1="176" x2="695.4" y2="416"/>
+        <line class="grid" x1="778.9" y1="176" x2="778.9" y2="416"/>
+        <line class="grid" x1="862.3" y1="176" x2="862.3" y2="416"/>
+        <text class="tick" x="612" y="436">0</text>
+        <text class="tick" x="695.4" y="436">0.2</text>
+        <text class="tick" x="778.9" y="436">0.4</text>
+        <text class="tick" x="862.3" y="436">0.6</text>
+
+        <text class="name" x="492" y="213">mAP@0.5</text>
+        <line class="link" x1="628" y1="208" x2="795.8" y2="208"/>
+        <circle class="dot-a" cx="622" cy="208" r="6"/>
+        <circle class="dot-b" cx="801.8" cy="208" r="7"/>
+        <text class="val-a" x="616" y="232" data-run="A-map50">0.024</text>
+        <text class="val-b" x="814" y="213" data-run="A2-map50">0.455</text>
+
+        <text class="name" x="492" y="269">AP@0.75</text>
+        <line class="link" x1="627.2" y1="264" x2="782" y2="264"/>
+        <circle class="dot-a" cx="621.2" cy="264" r="6"/>
+        <circle class="dot-b" cx="788" cy="264" r="7"/>
+        <text class="val-a" x="616" y="288" data-run="A-ap75">0.022</text>
+        <text class="val-b" x="800" y="269" data-run="A2-ap75">0.422</text>
+
+        <text class="name" x="492" y="325">recall</text>
+        <line class="link" x1="638.9" y1="320" x2="797.9" y2="320"/>
+        <circle class="dot-a" cx="632.9" cy="320" r="6"/>
+        <circle class="dot-b" cx="803.9" cy="320" r="7"/>
+        <text class="val-a" x="627" y="344" data-run="A-recall">0.050</text>
+        <text class="val-b" x="816" y="325" data-run="A2-recall">0.46</text>
+
+        <text class="name" x="492" y="381">precision</text>
+        <line class="link" x1="830.7" y1="376" x2="868.8" y2="376"/>
+        <circle class="dot-a" cx="824.7" cy="376" r="6"/>
+        <circle class="dot-b" cx="874.8" cy="376" r="7"/>
+        <text class="val-a" x="811" y="400" data-run="A-precision">0.51</text>
+        <text class="val-b" x="887" y="381" data-run="A2-precision">0.63</text>
+
+        <text class="note" x="492" y="474">mAP and AP from pycocotools on the 300 validation photos</text>
+        <text class="note" x="492" y="492">precision and recall from the Ultralytics validation pass</text>
+        <text class="note" x="492" y="510" data-run="cls-loss">class loss at epoch 19 fell from 5.06 to 1.89</text>
+
+        <!-- What stayed the same -->
+        <line class="rule" x1="40" y1="540" x2="920" y2="540"/>
+        <text class="tag" x="40" y="566">HELD CONSTANT IN BOTH RUNS</text>
+
+        <text class="stat" x="40" y="612">YOLOv8n</text>
+        <text class="tag" x="40" y="634">PRETRAINED MODEL</text>
+        <line class="rule" x1="204" y1="586" x2="204" y2="638"/>
+        <text class="stat" x="220" y="612">823</text>
+        <text class="tag" x="220" y="634">REAL TRAIN PHOTOS</text>
+        <line class="rule" x1="380" y1="586" x2="380" y2="638"/>
+        <text class="stat" x="396" y="612">640</text>
+        <text class="tag" x="396" y="634">IMAGE SIZE</text>
+        <line class="rule" x1="508" y1="586" x2="508" y2="638"/>
+        <text class="stat" x="524" y="612">16</text>
+        <text class="tag" x="524" y="634">BATCH</text>
+        <line class="rule" x1="612" y1="586" x2="612" y2="638"/>
+        <text class="stat" x="628" y="612">50</text>
+        <text class="tag" x="628" y="634">EPOCHS</text>
+        <line class="rule" x1="732" y1="586" x2="732" y2="638"/>
+        <text class="stat" x="748" y="612">300</text>
+        <text class="tag" x="748" y="634">VALIDATION PHOTOS</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>

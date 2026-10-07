@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelf product detection · what the score covers</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-paper-2: #ececec;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-soft:    #7a8399;
+      --color-rule:    rgba(45,49,66,0.12);
+      --color-accent:  #eb6c36;
+      --color-accent-tint: rgba(235,108,54,0.08);
+      --color-card:    #ffffff;
+      --color-card-stroke: rgba(45,49,66,0.22);
+      --color-input:   #ececec;
+      --color-input-stroke: rgba(45,49,66,0.34);
+      --color-on-accent: #2d3142;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+
+    /* Diagram type */
+    .bg        { fill: var(--color-paper); }
+    .headline  { font-family: var(--font-serif); font-size: 40px; fill: var(--color-ink); letter-spacing: -0.02em; }
+    .numeral   { font-family: var(--font-serif); font-size: 28px; fill: var(--color-ink); }
+    .name      { font-family: var(--font-sans);  font-size: 16px; font-weight: 600; fill: var(--color-ink); }
+    .sub       { font-family: var(--font-mono);  font-size: 12px; fill: var(--color-muted); }
+    .tag       { font-family: var(--font-mono);  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; fill: var(--color-ink); }
+    .tag-soft  { fill: var(--color-muted); }
+    .aside     { font-family: var(--font-serif); font-size: 18px; font-style: italic; fill: var(--color-muted); }
+    .key       { font-family: var(--font-sans);  font-size: 12px; fill: var(--color-muted); }
+    .accent-text { fill: var(--color-accent); }
+
+    /* Class grid, one square per class */
+    .sq-scored           { fill: var(--color-ink); }
+    .sq-scored-untrained { fill: none; stroke: var(--color-ink); stroke-width: 2; }
+    .sq-trained-only     { fill: var(--color-muted); fill-opacity: 0.3; }
+    .sq-synthetic-only   { fill: none; stroke: var(--color-soft); stroke-width: 1; }
+    .sq-no-boxes         { fill: none; stroke: var(--color-soft); stroke-width: 1; stroke-dasharray: 2 2; }
+    .span-scored   { stroke: var(--color-accent); stroke-width: 1.5; }
+    .span-unscored { stroke: var(--color-soft); stroke-width: 1; }
+    .rule          { stroke: var(--color-rule); stroke-width: 1; }
+
+    /* Cards */
+    .card      { fill: var(--color-card); stroke: var(--color-card-stroke); stroke-width: 1; }
+    .card-mask { fill: var(--color-paper); }
+    .k         { font-family: var(--font-mono); font-size: 12px; fill: var(--color-soft); }
+    .v         { font-family: var(--font-mono); font-size: 12px; font-weight: 500; fill: var(--color-ink); }
+    .hint      { font-family: var(--font-mono); font-size: 12px; fill: var(--color-soft); }
+
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Coverage · Shelf product detection</p>
+    <h1>What the score covers</h1>
+
+    <div class="diagram-container">
+      <!-- Numbers that depend on the run carry data-run. List them with: grep -n data-run docs/diagrams/score-coverage.html
+           Class counts depend only on the frozen split, not on the run. -->
+      <svg viewBox="0 0 960 704" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="score-coverage-title score-coverage-desc">
+        <title id="score-coverage-title">What the validation score covers, class by class</title>
+        <desc id="score-coverage-desc">A grid of 369 squares, one per product class. About 237 classes have at least one box in the 300 validation photos and are scored, and 10 of those never appear in a real training photo. The rest are not scored: 45 appear only in real training photos, about 70 only on synthetic renders, and 17 have no boxes at all. Three further limits apply. Many classes have only 1 or 2 validation boxes, so their AP is noisy. 94 of the 4,097 validation boxes are exact duplicates, which pycocotools keeps and Ultralytics drops. The reported pycocotools mAP at 0.5 for run A2 is 0.455 while Ultralytics prints 0.4987 for the same run. The score is local and is not a leaderboard score.</desc>
+
+        <rect class="bg" width="100%" height="100%"/>
+
+        <!-- Header -->
+        <text class="headline" x="40" y="76">The score covers about 237 of 369 classes.</text>
+        <text class="sub" x="40" y="104" letter-spacing="0.12em" data-run="run-id">RUN A2 · LOCAL VALIDATION, NOT A LEADERBOARD SCORE</text>
+        <text class="numeral accent-text" x="920" y="72" text-anchor="end" data-run="map50">mAP@0.5 0.455</text>
+        <text class="sub" x="920" y="104" text-anchor="end" letter-spacing="0.12em">MEASURED ON 300 VALIDATION PHOTOS</text>
+
+        <!-- Spans above the grid -->
+        <text class="tag accent-text" x="40" y="140">SCORED · ABOUT 237 CLASSES HAVE A VALIDATION BOX</text>
+        <line class="span-scored" x1="40" y1="150" x2="608" y2="150"/>
+        <text class="tag tag-soft" x="612" y="140">NOT SCORED · NO VALIDATION BOX</text>
+        <line class="span-unscored" x1="612" y1="150" x2="921.6" y2="150"/>
+
+        <!-- Class grid: 41 columns by 9 rows = 369 squares, filled column by column, top to bottom.
+             Order: 227 scored, 10 scored without real training photos, 45 trained only, 70 synthetic only, 17 without boxes. -->
+        <path class="sq-scored" d="M40 164h17.6v17.6h-17.6zM40 185.6h17.6v17.6h-17.6zM40 207.2h17.6v17.6h-17.6zM40 228.8h17.6v17.6h-17.6zM40 250.4h17.6v17.6h-17.6zM40 272h17.6v17.6h-17.6zM40 293.6h17.6v17.6h-17.6zM40 315.2h17.6v17.6h-17.6zM40 336.8h17.6v17.6h-17.6zM61.6 164h17.6v17.6h-17.6zM61.6 185.6h17.6v17.6h-17.6zM61.6 207.2h17.6v17.6h-17.6zM61.6 228.8h17.6v17.6h-17.6zM61.6 250.4h17.6v17.6h-17.6zM61.6 272h17.6v17.6h-17.6zM61.6 293.6h17.6v17.6h-17.6zM61.6 315.2h17.6v17.6h-17.6zM61.6 336.8h17.6v17.6h-17.6zM83.2 164h17.6v17.6h-17.6zM83.2 185.6h17.6v17.6h-17.6zM83.2 207.2h17.6v17.6h-17.6zM83.2 228.8h17.6v17.6h-17.6zM83.2 250.4h17.6v17.6h-17.6zM83.2 272h17.6v17.6h-17.6zM83.2 293.6h17.6v17.6h-17.6zM83.2 315.2h17.6v17.6h-17.6zM83.2 336.8h17.6v17.6h-17.6zM104.8 164h17.6v17.6h-17.6zM104.8 185.6h17.6v17.6h-17.6zM104.8 207.2h17.6v17.6h-17.6zM104.8 228.8h17.6v17.6h-17.6zM104.8 250.4h17.6v17.6h-17.6zM104.8 272h17.6v17.6h-17.6zM104.8 293.6h17.6v17.6h-17.6zM104.8 315.2h17.6v17.6h-17.6zM104.8 336.8h17.6v17.6h-17.6zM126.4 164h17.6v17.6h-17.6zM126.4 185.6h17.6v17.6h-17.6zM126.4 207.2h17.6v17.6h-17.6zM126.4 228.8h17.6v17.6h-17.6zM126.4 250.4h17.6v17.6h-17.6zM126.4 272h17.6v17.6h-17.6zM126.4 293.6h17.6v17.6h-17.6zM126.4 315.2h17.6v17.6h-17.6zM126.4 336.8h17.6v17.6h-17.6zM148 164h17.6v17.6h-17.6zM148 185.6h17.6v17.6h-17.6zM148 207.2h17.6v17.6h-17.6zM148 228.8h17.6v17.6h-17.6zM148 250.4h17.6v17.6h-17.6zM148 272h17.6v17.6h-17.6zM148 293.6h17.6v17.6h-17.6zM148 315.2h17.6v17.6h-17.6zM148 336.8h17.6v17.6h-17.6zM169.6 164h17.6v17.6h-17.6zM169.6 185.6h17.6v17.6h-17.6zM169.6 207.2h17.6v17.6h-17.6zM169.6 228.8h17.6v17.6h-17.6zM169.6 250.4h17.6v17.6h-17.6zM169.6 272h17.6v17.6h-17.6zM169.6 293.6h17.6v17.6h-17.6zM169.6 315.2h17.6v17.6h-17.6zM169.6 336.8h17.6v17.6h-17.6zM191.2 164h17.6v17.6h-17.6zM191.2 185.6h17.6v17.6h-17.6zM191.2 207.2h17.6v17.6h-17.6zM191.2 228.8h17.6v17.6h-17.6zM191.2 250.4h17.6v17.6h-17.6zM191.2 272h17.6v17.6h-17.6zM191.2 293.6h17.6v17.6h-17.6zM191.2 315.2h17.6v17.6h-17.6zM191.2 336.8h17.6v17.6h-17.6zM212.8 164h17.6v17.6h-17.6zM212.8 185.6h17.6v17.6h-17.6zM212.8 207.2h17.6v17.6h-17.6zM212.8 228.8h17.6v17.6h-17.6zM212.8 250.4h17.6v17.6h-17.6zM212.8 272h17.6v17.6h-17.6zM212.8 293.6h17.6v17.6h-17.6zM212.8 315.2h17.6v17.6h-17.6zM212.8 336.8h17.6v17.6h-17.6zM234.4 164h17.6v17.6h-17.6zM234.4 185.6h17.6v17.6h-17.6zM234.4 207.2h17.6v17.6h-17.6zM234.4 228.8h17.6v17.6h-17.6zM234.4 250.4h17.6v17.6h-17.6zM234.4 272h17.6v17.6h-17.6zM234.4 293.6h17.6v17.6h-17.6zM234.4 315.2h17.6v17.6h-17.6zM234.4 336.8h17.6v17.6h-17.6zM256 164h17.6v17.6h-17.6zM256 185.6h17.6v17.6h-17.6zM256 207.2h17.6v17.6h-17.6zM256 228.8h17.6v17.6h-17.6zM256 250.4h17.6v17.6h-17.6zM256 272h17.6v17.6h-17.6zM256 293.6h17.6v17.6h-17.6zM256 315.2h17.6v17.6h-17.6zM256 336.8h17.6v17.6h-17.6zM277.6 164h17.6v17.6h-17.6zM277.6 185.6h17.6v17.6h-17.6zM277.6 207.2h17.6v17.6h-17.6zM277.6 228.8h17.6v17.6h-17.6zM277.6 250.4h17.6v17.6h-17.6zM277.6 272h17.6v17.6h-17.6zM277.6 293.6h17.6v17.6h-17.6zM277.6 315.2h17.6v17.6h-17.6zM277.6 336.8h17.6v17.6h-17.6zM299.2 164h17.6v17.6h-17.6zM299.2 185.6h17.6v17.6h-17.6zM299.2 207.2h17.6v17.6h-17.6zM299.2 228.8h17.6v17.6h-17.6zM299.2 250.4h17.6v17.6h-17.6zM299.2 272h17.6v17.6h-17.6zM299.2 293.6h17.6v17.6h-17.6zM299.2 315.2h17.6v17.6h-17.6zM299.2 336.8h17.6v17.6h-17.6zM320.8 164h17.6v17.6h-17.6zM320.8 185.6h17.6v17.6h-17.6zM320.8 207.2h17.6v17.6h-17.6zM320.8 228.8h17.6v17.6h-17.6zM320.8 250.4h17.6v17.6h-17.6zM320.8 272h17.6v17.6h-17.6zM320.8 293.6h17.6v17.6h-17.6zM320.8 315.2h17.6v17.6h-17.6zM320.8 336.8h17.6v17.6h-17.6zM342.4 164h17.6v17.6h-17.6zM342.4 185.6h17.6v17.6h-17.6zM342.4 207.2h17.6v17.6h-17.6zM342.4 228.8h17.6v17.6h-17.6zM342.4 250.4h17.6v17.6h-17.6zM342.4 272h17.6v17.6h-17.6zM342.4 293.6h17.6v17.6h-17.6zM342.4 315.2h17.6v17.6h-17.6zM342.4 336.8h17.6v17.6h-17.6zM364 164h17.6v17.6h-17.6zM364 185.6h17.6v17.6h-17.6zM364 207.2h17.6v17.6h-17.6zM364 228.8h17.6v17.6h-17.6zM364 250.4h17.6v17.6h-17.6zM364 272h17.6v17.6h-17.6zM364 293.6h17.6v17.6h-17.6zM364 315.2h17.6v17.6h-17.6zM364 336.8h17.6v17.6h-17.6zM385.6 164h17.6v17.6h-17.6zM385.6 185.6h17.6v17.6h-17.6zM385.6 207.2h17.6v17.6h-17.6zM385.6 228.8h17.6v17.6h-17.6zM385.6 250.4h17.6v17.6h-17.6zM385.6 272h17.6v17.6h-17.6zM385.6 293.6h17.6v17.6h-17.6zM385.6 315.2h17.6v17.6h-17.6zM385.6 336.8h17.6v17.6h-17.6zM407.2 164h17.6v17.6h-17.6zM407.2 185.6h17.6v17.6h-17.6zM407.2 207.2h17.6v17.6h-17.6zM407.2 228.8h17.6v17.6h-17.6zM407.2 250.4h17.6v17.6h-17.6zM407.2 272h17.6v17.6h-17.6zM407.2 293.6h17.6v17.6h-17.6zM407.2 315.2h17.6v17.6h-17.6zM407.2 336.8h17.6v17.6h-17.6zM428.8 164h17.6v17.6h-17.6zM428.8 185.6h17.6v17.6h-17.6zM428.8 207.2h17.6v17.6h-17.6zM428.8 228.8h17.6v17.6h-17.6zM428.8 250.4h17.6v17.6h-17.6zM428.8 272h17.6v17.6h-17.6zM428.8 293.6h17.6v17.6h-17.6zM428.8 315.2h17.6v17.6h-17.6zM428.8 336.8h17.6v17.6h-17.6zM450.4 164h17.6v17.6h-17.6zM450.4 185.6h17.6v17.6h-17.6zM450.4 207.2h17.6v17.6h-17.6zM450.4 228.8h17.6v17.6h-17.6zM450.4 250.4h17.6v17.6h-17.6zM450.4 272h17.6v17.6h-17.6zM450.4 293.6h17.6v17.6h-17.6zM450.4 315.2h17.6v17.6h-17.6zM450.4 336.8h17.6v17.6h-17.6zM472 164h17.6v17.6h-17.6zM472 185.6h17.6v17.6h-17.6zM472 207.2h17.6v17.6h-17.6zM472 228.8h17.6v17.6h-17.6zM472 250.4h17.6v17.6h-17.6zM472 272h17.6v17.6h-17.6zM472 293.6h17.6v17.6h-17.6zM472 315.2h17.6v17.6h-17.6zM472 336.8h17.6v17.6h-17.6zM493.6 164h17.6v17.6h-17.6zM493.6 185.6h17.6v17.6h-17.6zM493.6 207.2h17.6v17.6h-17.6zM493.6 228.8h17.6v17.6h-17.6zM493.6 250.4h17.6v17.6h-17.6zM493.6 272h17.6v17.6h-17.6zM493.6 293.6h17.6v17.6h-17.6zM493.6 315.2h17.6v17.6h-17.6zM493.6 336.8h17.6v17.6h-17.6zM515.2 164h17.6v17.6h-17.6zM515.2 185.6h17.6v17.6h-17.6zM515.2 207.2h17.6v17.6h-17.6zM515.2 228.8h17.6v17.6h-17.6zM515.2 250.4h17.6v17.6h-17.6zM515.2 272h17.6v17.6h-17.6zM515.2 293.6h17.6v17.6h-17.6zM515.2 315.2h17.6v17.6h-17.6zM515.2 336.8h17.6v17.6h-17.6zM536.8 164h17.6v17.6h-17.6zM536.8 185.6h17.6v17.6h-17.6zM536.8 207.2h17.6v17.6h-17.6zM536.8 228.8h17.6v17.6h-17.6zM536.8 250.4h17.6v17.6h-17.6zM536.8 272h17.6v17.6h-17.6zM536.8 293.6h17.6v17.6h-17.6zM536.8 315.2h17.6v17.6h-17.6zM536.8 336.8h17.6v17.6h-17.6zM558.4 164h17.6v17.6h-17.6zM558.4 185.6h17.6v17.6h-17.6zM558.4 207.2h17.6v17.6h-17.6zM558.4 228.8h17.6v17.6h-17.6zM558.4 250.4h17.6v17.6h-17.6zM558.4 272h17.6v17.6h-17.6zM558.4 293.6h17.6v17.6h-17.6zM558.4 315.2h17.6v17.6h-17.6zM558.4 336.8h17.6v17.6h-17.6zM580 164h17.6v17.6h-17.6zM580 185.6h17.6v17.6h-17.6z"/>
+        <path class="sq-scored-untrained" d="M580 207.2h17.6v17.6h-17.6zM580 228.8h17.6v17.6h-17.6zM580 250.4h17.6v17.6h-17.6zM580 272h17.6v17.6h-17.6zM580 293.6h17.6v17.6h-17.6zM580 315.2h17.6v17.6h-17.6zM580 336.8h17.6v17.6h-17.6zM601.6 164h17.6v17.6h-17.6zM601.6 185.6h17.6v17.6h-17.6zM601.6 207.2h17.6v17.6h-17.6z"/>
+        <path class="sq-trained-only" d="M601.6 228.8h17.6v17.6h-17.6zM601.6 250.4h17.6v17.6h-17.6zM601.6 272h17.6v17.6h-17.6zM601.6 293.6h17.6v17.6h-17.6zM601.6 315.2h17.6v17.6h-17.6zM601.6 336.8h17.6v17.6h-17.6zM623.2 164h17.6v17.6h-17.6zM623.2 185.6h17.6v17.6h-17.6zM623.2 207.2h17.6v17.6h-17.6zM623.2 228.8h17.6v17.6h-17.6zM623.2 250.4h17.6v17.6h-17.6zM623.2 272h17.6v17.6h-17.6zM623.2 293.6h17.6v17.6h-17.6zM623.2 315.2h17.6v17.6h-17.6zM623.2 336.8h17.6v17.6h-17.6zM644.8 164h17.6v17.6h-17.6zM644.8 185.6h17.6v17.6h-17.6zM644.8 207.2h17.6v17.6h-17.6zM644.8 228.8h17.6v17.6h-17.6zM644.8 250.4h17.6v17.6h-17.6zM644.8 272h17.6v17.6h-17.6zM644.8 293.6h17.6v17.6h-17.6zM644.8 315.2h17.6v17.6h-17.6zM644.8 336.8h17.6v17.6h-17.6zM666.4 164h17.6v17.6h-17.6zM666.4 185.6h17.6v17.6h-17.6zM666.4 207.2h17.6v17.6h-17.6zM666.4 228.8h17.6v17.6h-17.6zM666.4 250.4h17.6v17.6h-17.6zM666.4 272h17.6v17.6h-17.6zM666.4 293.6h17.6v17.6h-17.6zM666.4 315.2h17.6v17.6h-17.6zM666.4 336.8h17.6v17.6h-17.6zM688 164h17.6v17.6h-17.6zM688 185.6h17.6v17.6h-17.6zM688 207.2h17.6v17.6h-17.6zM688 228.8h17.6v17.6h-17.6zM688 250.4h17.6v17.6h-17.6zM688 272h17.6v17.6h-17.6zM688 293.6h17.6v17.6h-17.6zM688 315.2h17.6v17.6h-17.6zM688 336.8h17.6v17.6h-17.6zM709.6 164h17.6v17.6h-17.6zM709.6 185.6h17.6v17.6h-17.6zM709.6 207.2h17.6v17.6h-17.6z"/>
+        <path class="sq-synthetic-only" d="M709.6 228.8h17.6v17.6h-17.6zM709.6 250.4h17.6v17.6h-17.6zM709.6 272h17.6v17.6h-17.6zM709.6 293.6h17.6v17.6h-17.6zM709.6 315.2h17.6v17.6h-17.6zM709.6 336.8h17.6v17.6h-17.6zM731.2 164h17.6v17.6h-17.6zM731.2 185.6h17.6v17.6h-17.6zM731.2 207.2h17.6v17.6h-17.6zM731.2 228.8h17.6v17.6h-17.6zM731.2 250.4h17.6v17.6h-17.6zM731.2 272h17.6v17.6h-17.6zM731.2 293.6h17.6v17.6h-17.6zM731.2 315.2h17.6v17.6h-17.6zM731.2 336.8h17.6v17.6h-17.6zM752.8 164h17.6v17.6h-17.6zM752.8 185.6h17.6v17.6h-17.6zM752.8 207.2h17.6v17.6h-17.6zM752.8 228.8h17.6v17.6h-17.6zM752.8 250.4h17.6v17.6h-17.6zM752.8 272h17.6v17.6h-17.6zM752.8 293.6h17.6v17.6h-17.6zM752.8 315.2h17.6v17.6h-17.6zM752.8 336.8h17.6v17.6h-17.6zM774.4 164h17.6v17.6h-17.6zM774.4 185.6h17.6v17.6h-17.6zM774.4 207.2h17.6v17.6h-17.6zM774.4 228.8h17.6v17.6h-17.6zM774.4 250.4h17.6v17.6h-17.6zM774.4 272h17.6v17.6h-17.6zM774.4 293.6h17.6v17.6h-17.6zM774.4 315.2h17.6v17.6h-17.6zM774.4 336.8h17.6v17.6h-17.6zM796 164h17.6v17.6h-17.6zM796 185.6h17.6v17.6h-17.6zM796 207.2h17.6v17.6h-17.6zM796 228.8h17.6v17.6h-17.6zM796 250.4h17.6v17.6h-17.6zM796 272h17.6v17.6h-17.6zM796 293.6h17.6v17.6h-17.6zM796 315.2h17.6v17.6h-17.6zM796 336.8h17.6v17.6h-17.6zM817.6 164h17.6v17.6h-17.6zM817.6 185.6h17.6v17.6h-17.6zM817.6 207.2h17.6v17.6h-17.6zM817.6 228.8h17.6v17.6h-17.6zM817.6 250.4h17.6v17.6h-17.6zM817.6 272h17.6v17.6h-17.6zM817.6 293.6h17.6v17.6h-17.6zM817.6 315.2h17.6v17.6h-17.6zM817.6 336.8h17.6v17.6h-17.6zM839.2 164h17.6v17.6h-17.6zM839.2 185.6h17.6v17.6h-17.6zM839.2 207.2h17.6v17.6h-17.6zM839.2 228.8h17.6v17.6h-17.6zM839.2 250.4h17.6v17.6h-17.6zM839.2 272h17.6v17.6h-17.6zM839.2 293.6h17.6v17.6h-17.6zM839.2 315.2h17.6v17.6h-17.6zM839.2 336.8h17.6v17.6h-17.6zM860.8 164h17.6v17.6h-17.6zM860.8 185.6h17.6v17.6h-17.6zM860.8 207.2h17.6v17.6h-17.6zM860.8 228.8h17.6v17.6h-17.6zM860.8 250.4h17.6v17.6h-17.6zM860.8 272h17.6v17.6h-17.6zM860.8 293.6h17.6v17.6h-17.6zM860.8 315.2h17.6v17.6h-17.6zM860.8 336.8h17.6v17.6h-17.6zM882.4 164h17.6v17.6h-17.6z"/>
+        <path class="sq-no-boxes" d="M882.4 185.6h17.6v17.6h-17.6zM882.4 207.2h17.6v17.6h-17.6zM882.4 228.8h17.6v17.6h-17.6zM882.4 250.4h17.6v17.6h-17.6zM882.4 272h17.6v17.6h-17.6zM882.4 293.6h17.6v17.6h-17.6zM882.4 315.2h17.6v17.6h-17.6zM882.4 336.8h17.6v17.6h-17.6zM904 164h17.6v17.6h-17.6zM904 185.6h17.6v17.6h-17.6zM904 207.2h17.6v17.6h-17.6zM904 228.8h17.6v17.6h-17.6zM904 250.4h17.6v17.6h-17.6zM904 272h17.6v17.6h-17.6zM904 293.6h17.6v17.6h-17.6zM904 315.2h17.6v17.6h-17.6zM904 336.8h17.6v17.6h-17.6z"/>
+
+        <!-- Legend -->
+        <rect class="sq-scored" x="40" y="372" width="12" height="12"/>
+        <text class="key" x="60" y="382">Scored, with real training photos</text>
+        <rect class="sq-scored-untrained" x="349" y="373" width="10" height="10"/>
+        <text class="key" x="368" y="382">10 scored, never in a real training photo</text>
+        <rect class="sq-trained-only" x="656" y="372" width="12" height="12"/>
+        <text class="key" x="676" y="382">45 in real training photos only</text>
+        <rect class="sq-synthetic-only" x="40.5" y="394.5" width="11" height="11"/>
+        <text class="key" x="60" y="404">About 70 only on synthetic renders</text>
+        <rect class="sq-no-boxes" x="348.5" y="394.5" width="11" height="11"/>
+        <text class="key" x="368" y="404">17 with no boxes at all</text>
+
+        <line class="rule" x1="40" y1="424" x2="920" y2="424"/>
+
+        <!-- 1 · Few boxes per class -->
+        <text class="tag" x="40" y="458">PER CLASS</text>
+        <text class="name" x="40" y="480">Few boxes per class</text>
+        <text class="sub" x="40" y="498">in the 300 validation photos</text>
+        <rect class="card-mask" x="320" y="444" width="600" height="56" rx="6"/>
+        <rect class="card" x="320" y="444" width="600" height="56" rx="6"/>
+        <text class="k" x="336" y="468">boxes</text>
+        <text class="v" x="448" y="468">1 or 2 in validation for many classes</text>
+        <text class="k" x="336" y="488">effect</text>
+        <text class="v" x="448" y="488">their AP is noisy</text>
+
+        <!-- 2 · Duplicate ground truth -->
+        <text class="tag" x="40" y="530">GROUND TRUTH</text>
+        <text class="name" x="40" y="552">Duplicate boxes</text>
+        <text class="sub" x="40" y="570">94 of 4,097 validation boxes</text>
+        <rect class="card-mask" x="320" y="516" width="600" height="56" rx="6"/>
+        <rect class="card" x="320" y="516" width="600" height="56" rx="6"/>
+        <text class="k" x="336" y="540">pycocotools</text>
+        <text class="v" x="448" y="540">keeps them, 4,097 boxes</text>
+        <text class="hint" x="904" y="540" text-anchor="end">best possible mAP is slightly below 1</text>
+        <text class="k" x="336" y="560">Ultralytics</text>
+        <text class="v" x="448" y="560">drops them, 4,003 boxes</text>
+
+        <!-- 3 · Two evaluators -->
+        <text class="tag" x="40" y="602">EVALUATOR</text>
+        <text class="name" x="40" y="624">Two tools, two numbers</text>
+        <text class="sub" x="40" y="642">same run, same photos</text>
+        <rect class="card-mask" x="320" y="588" width="600" height="56" rx="6"/>
+        <rect class="card" x="320" y="588" width="600" height="56" rx="6"/>
+        <text class="k" x="336" y="612">pycocotools</text>
+        <text class="v" x="448" y="612" data-run="map50">0.455</text>
+        <text class="hint" x="904" y="612" text-anchor="end">reported in the results table</text>
+        <text class="k" x="336" y="632">Ultralytics</text>
+        <text class="v" x="448" y="632" data-run="map50-ultralytics">0.4987</text>
+        <text class="hint" x="904" y="632" text-anchor="end">cross-check only, gap not investigated</text>
+
+        <!-- Footer -->
+        <text class="aside" x="40" y="676">A local score on a frozen split. The hackathon leaderboard no longer takes submissions.</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>

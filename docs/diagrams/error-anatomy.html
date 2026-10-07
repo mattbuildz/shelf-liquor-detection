@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelf product detection · where the error is</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-paper-2: #ececec;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-soft:    #7a8399;
+      --color-rule:    rgba(45,49,66,0.12);
+      --color-accent:  #eb6c36;
+      --color-accent-tint: rgba(235,108,54,0.08);
+      --color-card:    #ffffff;
+      --color-card-stroke: rgba(45,49,66,0.22);
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    h1 { font-family: var(--font-serif); font-size: 2rem; font-weight: 400; margin-bottom: 1.5rem; }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+
+    /* Type */
+    .bg        { fill: var(--color-paper); }
+    .eyebrow-t { font-family: var(--font-mono);  font-size: 11px; font-weight: 500; letter-spacing: 0.14em; fill: var(--color-muted); }
+    .headline  { font-family: var(--font-serif); font-size: 46px; fill: var(--color-ink); letter-spacing: -0.02em; }
+    .title     { font-family: var(--font-sans);  font-size: 16px; font-weight: 600; fill: var(--color-ink); }
+    .name      { font-family: var(--font-sans);  font-size: 14px; font-weight: 600; fill: var(--color-ink); }
+    .body      { font-family: var(--font-sans);  font-size: 13px; fill: var(--color-muted); }
+    .metric    { font-family: var(--font-mono);  font-size: 12px; fill: var(--color-muted); }
+    .value     { font-family: var(--font-mono);  font-size: 13px; font-weight: 600; fill: var(--color-ink); text-anchor: end; }
+    .px        { font-family: var(--font-mono);  font-size: 13px; font-weight: 600; fill: var(--color-ink); text-anchor: middle; }
+    .tag       { font-family: var(--font-mono);  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; fill: var(--color-muted); }
+    .tag-mid   { text-anchor: middle; }
+    .tag-soft  { fill: var(--color-soft); }
+    .accent-text { fill: var(--color-accent); }
+
+    /* Status chips */
+    .chip-seen   { fill: none; stroke: var(--color-ink); stroke-width: 1; }
+    .chip-guess  { fill: none; stroke: var(--color-soft); stroke-width: 1; stroke-dasharray: 3 2; }
+    .chip-t      { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.14em; }
+    .on-seen     { fill: var(--color-ink); }
+    .on-guess    { fill: var(--color-muted); }
+
+    /* Bars on a 0 to 1 scale, 400 px wide */
+    .track     { fill: var(--color-paper-2); }
+    .bar       { fill: var(--color-ink); }
+
+    /* Pixel bottles */
+    .px-body   { fill: var(--color-ink); }
+    .px-label  { fill: var(--color-accent); }
+    .px-grid   { fill: none; stroke: var(--color-paper); stroke-width: 0.6; }
+    .ruler     { fill: none; stroke: var(--color-soft); stroke-width: 1; }
+
+    /* Chain */
+    .step-seen  { fill: var(--color-card); stroke: var(--color-ink); stroke-width: 1; }
+    .step-guess { fill: none; stroke: var(--color-soft); stroke-width: 1; stroke-dasharray: 4 3; }
+    .step-plan  { fill: var(--color-accent-tint); stroke: var(--color-accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+    .flow       { stroke: var(--color-muted); stroke-width: 1.2; fill: none; }
+    .head       { fill: var(--color-muted); }
+    .rule       { stroke: var(--color-rule); stroke-width: 1; }
+
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <h1>Where the remaining error comes from</h1>
+
+    <div class="diagram-container">
+      <!-- Numbers that depend on the run carry data-run. List them with: grep -n data-run docs/diagrams/error-anatomy.html
+           Bars use a 0 to 1 scale over 400 px, so width = value * 400. -->
+      <svg viewBox="0 0 960 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="error-anatomy-title error-anatomy-desc">
+        <title id="error-anatomy-title">Where the remaining error of run A2 comes from</title>
+        <desc id="error-anatomy-desc">Measured on run A2: AP at IoU 0.5 is 0.455 and AP at IoU 0.75 is 0.422, so a much stricter box test barely lowers the score and boxes are placed well. Precision is 0.63 and recall is 0.46, so about half of the labelled products are missed. In run A the box loss was flat by epoch 15 while the class loss was still falling at epoch 50. Hypothesis: at image size 640 a bottle is only about 24 pixels wide, too few to read a label, and at 960 it is about 36 pixels. The planned test is run A3 at image size 960 on a Kaggle T4.</desc>
+        <defs>
+          <marker id="error-anatomy-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+        </defs>
+
+        <rect class="bg" width="100%" height="100%"/>
+
+        <!-- Header -->
+        <text class="eyebrow-t" x="40" y="52" data-run="run-id">RUN A2 · WHERE THE REMAINING ERROR COMES FROM</text>
+        <text class="headline" x="40" y="104">The boxes land well. The class is the hard part.</text>
+
+        <!-- Left: what was measured -->
+        <rect class="chip-seen" x="40" y="136" width="78" height="18" rx="2"/>
+        <text class="chip-t on-seen" x="48" y="149">MEASURED</text>
+
+        <text class="title" x="40" y="190">Same boxes, stricter overlap test</text>
+        <text class="metric" x="40" y="214">AP at IoU 0.5</text>
+        <text class="value" x="440" y="214" data-run="ap50">0.455</text>
+        <rect class="track" x="40" y="222" width="400" height="14"/>
+        <rect class="bar" x="40" y="222" width="182" height="14" data-run="ap50"/>
+        <text class="metric" x="40" y="258">AP at IoU 0.75</text>
+        <text class="value" x="440" y="258" data-run="ap75">0.422</text>
+        <rect class="track" x="40" y="266" width="400" height="14"/>
+        <rect class="bar" x="40" y="266" width="168.8" height="14" data-run="ap75"/>
+        <text class="body" x="40" y="302">A much tighter box test barely moves the score.</text>
+
+        <text class="title" x="40" y="348">What it draws and what it finds</text>
+        <text class="metric" x="40" y="372">precision</text>
+        <text class="value" x="440" y="372" data-run="precision">0.63</text>
+        <rect class="track" x="40" y="380" width="400" height="14"/>
+        <rect class="bar" x="40" y="380" width="252" height="14" data-run="precision"/>
+        <text class="metric" x="40" y="416">recall</text>
+        <text class="value" x="440" y="416" data-run="recall">0.46</text>
+        <rect class="track" x="40" y="424" width="400" height="14"/>
+        <rect class="bar" x="40" y="424" width="184" height="14" data-run="recall"/>
+        <text class="body" x="40" y="460">It misses about half of the labelled products.</text>
+
+        <text class="title" x="40" y="506">Which loss kept moving</text>
+        <text class="body" x="40" y="528">In run A the box loss was flat by epoch 15.</text>
+        <text class="body" x="40" y="546">The class loss was still falling at epoch 50.</text>
+
+        <!-- Right: the hypothesis, drawn to scale -->
+        <rect class="chip-guess" x="500" y="136" width="92" height="18" rx="2"/>
+        <text class="chip-t on-guess" x="508" y="149">HYPOTHESIS</text>
+        <text class="title" x="500" y="190">Too few pixels to read a label</text>
+
+        <!-- bottle at imgsz 640: 24 px wide, 68 rows, top y=316, 1 cell = 3 units -->
+        <path class="px-body" d="M604 316h24v3h-24zM604 319h24v3h-24zM604 322h24v3h-24zM607 325h18v3h-18zM607 328h18v3h-18zM607 331h18v3h-18zM607 334h18v3h-18zM607 337h18v3h-18zM607 340h18v3h-18zM607 343h18v3h-18zM607 346h18v3h-18zM607 349h18v3h-18zM607 352h18v3h-18zM607 355h18v3h-18zM607 358h18v3h-18zM607 361h18v3h-18zM607 364h18v3h-18zM607 367h18v3h-18zM604 370h24v3h-24zM601 373h30v3h-30zM595 376h42v3h-42zM592 379h48v3h-48zM589 382h54v3h-54zM583 385h66v3h-66zM583 388h66v3h-66zM580 391h72v3h-72zM580 394h72v3h-72zM580 397h72v3h-72zM580 400h72v3h-72zM580 403h72v3h-72zM580 406h72v3h-72zM580 409h72v3h-72zM580 412h72v3h-72zM580 415h72v3h-72zM580 418h72v3h-72zM580 421h72v3h-72zM580 424h72v3h-72zM580 427h72v3h-72zM580 430h72v3h-72zM580 433h72v3h-72zM580 436h72v3h-72zM580 439h72v3h-72zM580 442h72v3h-72zM580 445h72v3h-72zM580 448h72v3h-72zM580 451h72v3h-72zM580 454h72v3h-72zM580 457h72v3h-72zM580 460h72v3h-72zM580 463h72v3h-72zM580 466h72v3h-72zM580 469h72v3h-72zM580 472h72v3h-72zM580 475h72v3h-72zM580 478h72v3h-72zM580 481h72v3h-72zM580 484h72v3h-72zM580 487h72v3h-72zM580 490h72v3h-72zM580 493h72v3h-72zM580 496h72v3h-72zM580 499h72v3h-72zM580 502h72v3h-72zM580 505h72v3h-72zM580 508h72v3h-72zM580 511h72v3h-72zM580 514h72v3h-72zM583 517h66v3h-66z"/>
+        <path class="px-label" d="M586 421h60v3h-60zM586 424h60v3h-60zM586 427h60v3h-60zM586 430h60v3h-60zM586 433h60v3h-60zM586 436h60v3h-60zM586 439h60v3h-60zM586 442h60v3h-60zM586 445h60v3h-60zM586 448h60v3h-60zM586 451h60v3h-60zM586 454h60v3h-60zM586 457h60v3h-60zM586 460h60v3h-60zM586 463h60v3h-60zM586 466h60v3h-60zM586 469h60v3h-60zM586 472h60v3h-60zM586 475h60v3h-60zM586 478h60v3h-60zM586 481h60v3h-60z"/>
+        <path class="px-grid" d="M580 316V520M583 316V520M586 316V520M589 316V520M592 316V520M595 316V520M598 316V520M601 316V520M604 316V520M607 316V520M610 316V520M613 316V520M616 316V520M619 316V520M622 316V520M625 316V520M628 316V520M631 316V520M634 316V520M637 316V520M640 316V520M643 316V520M646 316V520M649 316V520M652 316V520M580 316H652M580 319H652M580 322H652M580 325H652M580 328H652M580 331H652M580 334H652M580 337H652M580 340H652M580 343H652M580 346H652M580 349H652M580 352H652M580 355H652M580 358H652M580 361H652M580 364H652M580 367H652M580 370H652M580 373H652M580 376H652M580 379H652M580 382H652M580 385H652M580 388H652M580 391H652M580 394H652M580 397H652M580 400H652M580 403H652M580 406H652M580 409H652M580 412H652M580 415H652M580 418H652M580 421H652M580 424H652M580 427H652M580 430H652M580 433H652M580 436H652M580 439H652M580 442H652M580 445H652M580 448H652M580 451H652M580 454H652M580 457H652M580 460H652M580 463H652M580 466H652M580 469H652M580 472H652M580 475H652M580 478H652M580 481H652M580 484H652M580 487H652M580 490H652M580 493H652M580 496H652M580 499H652M580 502H652M580 505H652M580 508H652M580 511H652M580 514H652M580 517H652M580 520H652"/>
+        <!-- bottle at imgsz 960: 36 px wide, 102 rows, top y=214, 1 cell = 3 units -->
+        <path class="px-body" d="M776 214h36v3h-36zM776 217h36v3h-36zM776 220h36v3h-36zM776 223h36v3h-36zM776 226h36v3h-36zM779 229h30v3h-30zM779 232h30v3h-30zM779 235h30v3h-30zM779 238h30v3h-30zM779 241h30v3h-30zM779 244h30v3h-30zM779 247h30v3h-30zM779 250h30v3h-30zM779 253h30v3h-30zM779 256h30v3h-30zM779 259h30v3h-30zM779 262h30v3h-30zM779 265h30v3h-30zM779 268h30v3h-30zM779 271h30v3h-30zM779 274h30v3h-30zM779 277h30v3h-30zM779 280h30v3h-30zM779 283h30v3h-30zM779 286h30v3h-30zM779 289h30v3h-30zM779 292h30v3h-30zM776 295h36v3h-36zM773 298h42v3h-42zM770 301h48v3h-48zM764 304h60v3h-60zM761 307h66v3h-66zM755 310h78v3h-78zM752 313h84v3h-84zM749 316h90v3h-90zM746 319h96v3h-96zM743 322h102v3h-102zM740 325h108v3h-108zM740 328h108v3h-108zM740 331h108v3h-108zM740 334h108v3h-108zM740 337h108v3h-108zM740 340h108v3h-108zM740 343h108v3h-108zM740 346h108v3h-108zM740 349h108v3h-108zM740 352h108v3h-108zM740 355h108v3h-108zM740 358h108v3h-108zM740 361h108v3h-108zM740 364h108v3h-108zM740 367h108v3h-108zM740 370h108v3h-108zM740 373h108v3h-108zM740 376h108v3h-108zM740 379h108v3h-108zM740 382h108v3h-108zM740 385h108v3h-108zM740 388h108v3h-108zM740 391h108v3h-108zM740 394h108v3h-108zM740 397h108v3h-108zM740 400h108v3h-108zM740 403h108v3h-108zM740 406h108v3h-108zM740 409h108v3h-108zM740 412h108v3h-108zM740 415h108v3h-108zM740 418h108v3h-108zM740 421h108v3h-108zM740 424h108v3h-108zM740 427h108v3h-108zM740 430h108v3h-108zM740 433h108v3h-108zM740 436h108v3h-108zM740 439h108v3h-108zM740 442h108v3h-108zM740 445h108v3h-108zM740 448h108v3h-108zM740 451h108v3h-108zM740 454h108v3h-108zM740 457h108v3h-108zM740 460h108v3h-108zM740 463h108v3h-108zM740 466h108v3h-108zM740 469h108v3h-108zM740 472h108v3h-108zM740 475h108v3h-108zM740 478h108v3h-108zM740 481h108v3h-108zM740 484h108v3h-108zM740 487h108v3h-108zM740 490h108v3h-108zM740 493h108v3h-108zM740 496h108v3h-108zM740 499h108v3h-108zM740 502h108v3h-108zM740 505h108v3h-108zM740 508h108v3h-108zM740 511h108v3h-108zM746 514h96v3h-96zM746 517h96v3h-96z"/>
+        <path class="px-label" d="M746 373h96v3h-96zM746 376h96v3h-96zM746 379h96v3h-96zM746 382h96v3h-96zM746 385h96v3h-96zM746 388h96v3h-96zM746 391h96v3h-96zM746 394h96v3h-96zM746 397h96v3h-96zM746 400h96v3h-96zM746 403h96v3h-96zM746 406h96v3h-96zM746 409h96v3h-96zM746 412h96v3h-96zM746 415h96v3h-96zM746 418h96v3h-96zM746 421h96v3h-96zM746 424h96v3h-96zM746 427h96v3h-96zM746 430h96v3h-96zM746 433h96v3h-96zM746 436h96v3h-96zM746 439h96v3h-96zM746 442h96v3h-96zM746 445h96v3h-96zM746 448h96v3h-96zM746 451h96v3h-96zM746 454h96v3h-96zM746 457h96v3h-96zM746 460h96v3h-96zM746 463h96v3h-96z"/>
+        <path class="px-grid" d="M740 214V520M743 214V520M746 214V520M749 214V520M752 214V520M755 214V520M758 214V520M761 214V520M764 214V520M767 214V520M770 214V520M773 214V520M776 214V520M779 214V520M782 214V520M785 214V520M788 214V520M791 214V520M794 214V520M797 214V520M800 214V520M803 214V520M806 214V520M809 214V520M812 214V520M815 214V520M818 214V520M821 214V520M824 214V520M827 214V520M830 214V520M833 214V520M836 214V520M839 214V520M842 214V520M845 214V520M848 214V520M740 214H848M740 217H848M740 220H848M740 223H848M740 226H848M740 229H848M740 232H848M740 235H848M740 238H848M740 241H848M740 244H848M740 247H848M740 250H848M740 253H848M740 256H848M740 259H848M740 262H848M740 265H848M740 268H848M740 271H848M740 274H848M740 277H848M740 280H848M740 283H848M740 286H848M740 289H848M740 292H848M740 295H848M740 298H848M740 301H848M740 304H848M740 307H848M740 310H848M740 313H848M740 316H848M740 319H848M740 322H848M740 325H848M740 328H848M740 331H848M740 334H848M740 337H848M740 340H848M740 343H848M740 346H848M740 349H848M740 352H848M740 355H848M740 358H848M740 361H848M740 364H848M740 367H848M740 370H848M740 373H848M740 376H848M740 379H848M740 382H848M740 385H848M740 388H848M740 391H848M740 394H848M740 397H848M740 400H848M740 403H848M740 406H848M740 409H848M740 412H848M740 415H848M740 418H848M740 421H848M740 424H848M740 427H848M740 430H848M740 433H848M740 436H848M740 439H848M740 442H848M740 445H848M740 448H848M740 451H848M740 454H848M740 457H848M740 460H848M740 463H848M740 466H848M740 469H848M740 472H848M740 475H848M740 478H848M740 481H848M740 484H848M740 487H848M740 490H848M740 493H848M740 496H848M740 499H848M740 502H848M740 505H848M740 508H848M740 511H848M740 514H848M740 517H848M740 520H848"/>
+
+        <path class="ruler" d="M580 530 V538 H652 V530"/>
+        <text class="px" x="616" y="560">about 24 px</text>
+        <text class="tag tag-mid" x="616" y="580" data-run="run-id">IMGSZ 640 · RUN A2</text>
+        <path class="ruler" d="M740 530 V538 H848 V530"/>
+        <text class="px" x="794" y="560">about 36 px</text>
+        <text class="tag tag-mid" x="794" y="580">IMGSZ 960 · PLANNED A3</text>
+        <text class="tag tag-soft" x="500" y="606">ILLUSTRATION · WIDTH TO SCALE · 1 SQUARE = 1 PIXEL</text>
+
+        <!-- Bottom: from measurement to the next run -->
+        <line class="flow" x1="312" y1="652" x2="343" y2="652" marker-end="url(#error-anatomy-arrow)"/>
+        <line class="flow" x1="616" y1="652" x2="647" y2="652" marker-end="url(#error-anatomy-arrow)"/>
+
+        <rect class="step-seen" x="40" y="628" width="272" height="48" rx="6"/>
+        <text class="tag" x="56" y="647">MEASURED</text>
+        <text class="name" x="56" y="666">Boxes are placed well</text>
+
+        <rect class="step-guess" x="344" y="628" width="272" height="48" rx="6"/>
+        <text class="tag" x="360" y="647">HYPOTHESIS</text>
+        <text class="name" x="360" y="666">Labels are too small at 640</text>
+
+        <rect class="step-plan" x="648" y="628" width="272" height="48" rx="6"/>
+        <text class="tag" x="664" y="647">PLANNED · RUN A3</text>
+        <text class="name" x="664" y="666">imgsz 960 on a Kaggle T4</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelf product detection · problems seen</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-paper-2: #ececec;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-soft:    #7a8399;
+      --color-rule:    rgba(45,49,66,0.12);
+      --color-accent:  #eb6c36;
+      --color-accent-tint: rgba(235,108,54,0.08);
+      --color-card:    #ffffff;
+      --color-card-stroke: rgba(45,49,66,0.22);
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    h1 { font-family: var(--font-serif); font-size: 2rem; font-weight: 400; margin-bottom: 1.5rem; }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+
+    /* Type */
+    .bg        { fill: var(--color-paper); }
+    .eyebrow-t { font-family: var(--font-mono);  font-size: 11px; font-weight: 500; letter-spacing: 0.14em; fill: var(--color-muted); }
+    .headline  { font-family: var(--font-serif); font-size: 46px; fill: var(--color-ink); letter-spacing: -0.02em; }
+    .big       { font-family: var(--font-serif); font-size: 64px; fill: var(--color-ink); letter-spacing: -0.02em; }
+    .huge      { font-family: var(--font-serif); font-size: 88px; fill: var(--color-accent); letter-spacing: -0.03em; }
+    .mid       { font-family: var(--font-serif); font-size: 44px; fill: var(--color-ink); letter-spacing: -0.02em; }
+    .title     { font-family: var(--font-sans);  font-size: 16px; font-weight: 600; fill: var(--color-ink); }
+    .title-lg  { font-family: var(--font-sans);  font-size: 18px; font-weight: 600; fill: var(--color-ink); }
+    .body      { font-family: var(--font-sans);  font-size: 13px; fill: var(--color-muted); }
+    .unit      { font-family: var(--font-mono);  font-size: 13px; fill: var(--color-muted); }
+    .run       { font-family: var(--font-mono);  font-size: 11px; font-weight: 600; fill: var(--color-ink); }
+    .val       { font-family: var(--font-mono);  font-size: 12px; fill: var(--color-muted); }
+    .val-b     { font-family: var(--font-mono);  font-size: 12px; font-weight: 600; fill: var(--color-ink); }
+
+    /* Tiles */
+    .tile      { fill: var(--color-card); stroke: var(--color-card-stroke); stroke-width: 1; }
+    .tile-hero { fill: var(--color-accent-tint); stroke: var(--color-accent); stroke-width: 1.5; }
+
+    /* Status chips */
+    .chip-done   { fill: var(--color-ink); }
+    .chip-seen   { fill: none; stroke: var(--color-ink); stroke-width: 1; }
+    .chip-guess  { fill: none; stroke: var(--color-soft); stroke-width: 1; stroke-dasharray: 3 2; }
+    .chip-t      { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.14em; }
+    .on-done     { fill: var(--color-paper); }
+    .on-seen     { fill: var(--color-ink); }
+    .on-guess    { fill: var(--color-muted); }
+    .chip-note   { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.14em; fill: var(--color-muted); }
+
+    /* Bars */
+    .bar-before { fill: var(--color-soft); }
+    .bar-after  { fill: var(--color-ink); }
+    .bar-accent { fill: var(--color-accent); }
+    .track      { fill: none; stroke: var(--color-ink); stroke-width: 1; }
+
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <h1>Problems seen during the work</h1>
+
+    <div class="diagram-container">
+      <!-- Every number comes from OBSERVATIONS.md, RESULTS.md or LIMITATIONS.md.
+           Numbers that depend on the runs carry data-run. List them with: grep -n data-run docs/diagrams/problems.html -->
+      <svg viewBox="0 0 960 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="problems-title problems-desc">
+        <title id="problems-title">Seven problems seen during the work, each with its number and status</title>
+        <desc id="problems-desc">Seven problems from the observations log. Resolved: the automatic optimizer picked a learning rate about 370 times too small, so mAP at 0.5 was 0.024 until the rate was set by hand and reached 0.455. Resolved: the first epoch took 6.3 seconds per batch because one thread decoded 12-megapixel JPEGs, and caching images in RAM brought it to about 0.8 to 1 second. Measured: training held about 20.7 of 24 GB of memory plus about 8.3 GB of swap, so image size 960 moves to a Kaggle T4. Measured: 94 of 4,097 validation ground-truth boxes are exact duplicates. Hypothesis: pycocotools reports 0.455 and Ultralytics 0.4987 for the same run, a gap of about 9 percent with no confirmed cause. Hypothesis: a 3-epoch smoke model returned 0 boxes at confidence 0.001. Resolved: Kaggle refused 3,904 loose files against a limit of 1,000, fixed with one zip.</desc>
+
+        <rect class="bg" width="100%" height="100%"/>
+
+        <!-- Header -->
+        <text class="eyebrow-t" x="40" y="52">FROM THE OBSERVATIONS LOG · STATUS AFTER RUN A2</text>
+        <text class="headline" x="40" y="104">Seven problems, each caught by a number.</text>
+
+        <!-- 1 · Learning rate (hero) -->
+        <rect class="tile-hero" x="40" y="136" width="504" height="228" rx="6"/>
+        <rect class="chip-done" x="60" y="156" width="78" height="18" rx="2"/>
+        <text class="chip-t on-done" x="68" y="169">RESOLVED</text>
+        <text class="chip-note" x="150" y="169">CONFIRMED BY RUN A2</text>
+        <text class="huge" x="56" y="266">370x</text>
+        <text class="title-lg" x="250" y="218">Learning rate far too small</text>
+        <text class="body" x="250" y="242">optimizer=auto ignored lr0 0.01 and</text>
+        <text class="body" x="250" y="260">picked AdamW at 2.7e-05 by itself.</text>
+        <text class="run" x="60" y="306">A</text>
+        <rect class="bar-before" x="92" y="296" width="19.2" height="12"/>
+        <text class="val" x="120" y="306" data-run="A-map50">0.024 mAP@0.5 after 50 epochs</text>
+        <text class="run" x="60" y="334">A2</text>
+        <rect class="bar-accent" x="92" y="324" width="364" height="12"/>
+        <text class="val-b" x="464" y="334" data-run="A2-map50">0.455</text>
+
+        <!-- 2 · Slow first epoch -->
+        <rect class="tile" x="560" y="136" width="360" height="228" rx="6"/>
+        <rect class="chip-done" x="580" y="156" width="78" height="18" rx="2"/>
+        <text class="chip-t on-done" x="588" y="169">RESOLVED</text>
+        <text class="big" x="578" y="236">6.3 s</text>
+        <text class="unit" x="712" y="236">per batch of 16</text>
+        <text class="title" x="580" y="264">Slow first epoch</text>
+        <text class="body" x="580" y="284">One thread decoded 12-megapixel JPEGs,</text>
+        <text class="body" x="580" y="302">0 dataloader workers on MPS.</text>
+        <rect class="bar-before" x="580" y="318" width="220" height="10"/>
+        <text class="val" x="808" y="327">before</text>
+        <rect class="bar-after" x="580" y="338" width="35" height="10"/>
+        <text class="val-b" x="623" y="347">cache="ram" · 0.8 to 1 s</text>
+
+        <!-- 3 · Memory -->
+        <rect class="tile" x="40" y="380" width="312" height="208" rx="6"/>
+        <rect class="chip-seen" x="60" y="400" width="78" height="18" rx="2"/>
+        <text class="chip-t on-seen" x="68" y="413">MEASURED</text>
+        <text class="big" x="58" y="478">20.7</text>
+        <text class="unit" x="178" y="478">of 24 GB RAM</text>
+        <rect class="bar-after" x="60" y="492" width="234.6" height="12"/>
+        <rect class="track" x="60.5" y="492.5" width="271" height="11"/>
+        <text class="title" x="60" y="532">Memory is the limit on the Mac</text>
+        <text class="body" x="60" y="552">Plus about 8.3 GB of swap at imgsz 640.</text>
+        <text class="body" x="60" y="570">So imgsz 960 moves to a Kaggle T4.</text>
+
+        <!-- 4 · Duplicate boxes -->
+        <rect class="tile" x="368" y="380" width="268" height="208" rx="6"/>
+        <rect class="chip-seen" x="388" y="400" width="78" height="18" rx="2"/>
+        <text class="chip-t on-seen" x="396" y="413">MEASURED</text>
+        <text class="big" x="386" y="478">94</text>
+        <text class="unit" x="456" y="478">of 4,097 boxes</text>
+        <text class="title" x="388" y="514">Duplicate ground truth</text>
+        <text class="body" x="388" y="534">Exact copies in the validation set.</text>
+        <text class="body" x="388" y="552">pycocotools keeps them,</text>
+        <text class="body" x="388" y="570">Ultralytics drops them.</text>
+
+        <!-- 5 · Evaluator gap -->
+        <rect class="tile" x="652" y="380" width="268" height="208" rx="6"/>
+        <rect class="chip-guess" x="672" y="400" width="92" height="18" rx="2"/>
+        <text class="chip-t on-guess" x="680" y="413">HYPOTHESIS</text>
+        <text class="big" x="670" y="478" data-run="evaluator-gap">9%</text>
+        <text class="unit" x="746" y="478">between tools</text>
+        <text class="title" x="672" y="514">Two evaluators disagree</text>
+        <text class="body" x="672" y="534" data-run="A2-map50">pycocotools says 0.455,</text>
+        <text class="body" x="672" y="552" data-run="A2-map50-ultralytics">Ultralytics says 0.4987.</text>
+        <text class="body" x="672" y="570">Cause not investigated.</text>
+
+        <!-- 6 · Smoke model -->
+        <rect class="tile" x="40" y="604" width="432" height="76" rx="6"/>
+        <text class="mid" x="60" y="658">0</text>
+        <rect class="chip-guess" x="104" y="620" width="92" height="18" rx="2"/>
+        <text class="chip-t on-guess" x="112" y="633">HYPOTHESIS</text>
+        <text class="body" x="104" y="660">boxes from a 3-epoch smoke model at conf 0.001</text>
+
+        <!-- 7 · Kaggle upload -->
+        <rect class="tile" x="488" y="604" width="432" height="76" rx="6"/>
+        <text class="mid" x="508" y="658">3,904</text>
+        <rect class="chip-done" x="624" y="620" width="78" height="18" rx="2"/>
+        <text class="chip-t on-done" x="632" y="633">RESOLVED</text>
+        <text class="body" x="624" y="660">files, Kaggle takes 1,000. Sent one zip instead.</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>

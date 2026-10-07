@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelf product detection · pipeline</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-paper-2: #ececec;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-soft:    #7a8399;
+      --color-rule:    rgba(45,49,66,0.12);
+      --color-accent:  #eb6c36;
+      --color-accent-tint: rgba(235,108,54,0.08);
+      --color-card:    #ffffff;
+      --color-card-stroke: rgba(45,49,66,0.22);
+      --color-input:   #ececec;
+      --color-input-stroke: rgba(45,49,66,0.34);
+      --color-on-accent: #2d3142;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+
+    /* Diagram type */
+    .bg        { fill: var(--color-paper); }
+    .headline  { font-family: var(--font-serif); font-size: 40px; fill: var(--color-ink); letter-spacing: -0.02em; }
+    .numeral   { font-family: var(--font-serif); font-size: 28px; fill: var(--color-ink); }
+    .name      { font-family: var(--font-sans);  font-size: 16px; font-weight: 600; fill: var(--color-ink); }
+    .sub       { font-family: var(--font-mono);  font-size: 12px; fill: var(--color-muted); }
+    .tag       { font-family: var(--font-mono);  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; fill: var(--color-ink); }
+    .tag-soft  { fill: var(--color-muted); }
+    .label     { font-family: var(--font-mono);  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; fill: var(--color-muted); }
+    .aside     { font-family: var(--font-serif); font-size: 18px; font-style: italic; fill: var(--color-muted); }
+    .on-ink    { fill: var(--color-paper); }
+    .on-accent { fill: var(--color-on-accent); }
+
+    /* Data bar */
+    .seg-train   { fill: var(--color-ink); }
+    .seg-val     { fill: var(--color-accent); }
+    .seg-planned { fill: none; stroke: var(--color-soft); stroke-width: 1; stroke-dasharray: 5 4; }
+
+    /* Cards */
+    .card       { fill: var(--color-card); stroke: var(--color-card-stroke); stroke-width: 1; }
+    .card-mask  { fill: var(--color-paper); }
+    .card-focal { fill: var(--color-accent-tint); stroke: var(--color-accent); stroke-width: 1.5; }
+    .card-input { fill: var(--color-input); stroke: var(--color-input-stroke); stroke-width: 1; }
+    .k          { font-family: var(--font-mono); font-size: 12px; fill: var(--color-soft); }
+    .v          { font-family: var(--font-mono); font-size: 12px; font-weight: 500; fill: var(--color-ink); }
+    .hint       { font-family: var(--font-mono); font-size: 12px; fill: var(--color-soft); }
+
+    /* Connectors */
+    .flow       { stroke: var(--color-muted); stroke-width: 1.2; fill: none; }
+    .flow-focal { stroke: var(--color-accent); stroke-width: 1.5; fill: none; }
+    .feed       { stroke: var(--color-muted); stroke-width: 1.2; stroke-dasharray: 4 3; fill: none; }
+    .bracket    { stroke: var(--color-soft); stroke-width: 1; fill: none; }
+    .head       { fill: var(--color-muted); }
+    .head-accent { fill: var(--color-accent); }
+
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Data flow · Shelf product detection</p>
+    <h1>From 3,904 images to one validation score</h1>
+
+    <div class="diagram-container">
+      <!-- Numbers that depend on the run carry data-run. List them with: grep -n data-run docs/diagrams/pipeline.html -->
+      <svg viewBox="0 0 960 752" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pipeline-title pipeline-desc">
+        <title id="pipeline-title">From 3,904 images to one validation score</title>
+        <desc id="pipeline-desc">The 3,904 labelled images are 2,781 synthetic renders, planned for later runs and not used yet, and 1,123 real photos. A fixed random split with seed 2 holds out 300 real photos as the validation set. The other 823 are converted from COCO boxes to YOLO labels and used to fine-tune a pretrained YOLOv8n at image size 640, batch 16, for 50 epochs with AdamW at learning rate 0.001. The trained model predicts on the 300 held-out photos and pycocotools scores the predictions against 4,097 ground-truth boxes. Run A2 reaches mAP at 0.5 of 0.455. This is a local validation score, not a leaderboard score.</desc>
+        <defs>
+          <marker id="pipeline-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="head" points="0 0, 8 3, 0 6"/>
+          </marker>
+          <marker id="pipeline-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="head-accent" points="0 0, 8 3, 0 6"/>
+          </marker>
+        </defs>
+
+        <rect class="bg" width="100%" height="100%"/>
+
+        <!-- Header -->
+        <text class="headline" x="40" y="76">3,904 images in. One score on 300 real photos out.</text>
+        <text class="sub" x="40" y="104" letter-spacing="0.12em">SHELF PRODUCT DETECTION · 369 CLASSES · LOCAL VALIDATION ONLY</text>
+        <text class="sub" x="920" y="104" text-anchor="end" letter-spacing="0.12em" data-run="run-id">RUN A2</text>
+
+        <!-- Connectors first, so they sit behind the cards -->
+        <path class="bracket" d="M667 192 V198 H920 V192"/>
+        <line class="flow" x1="804" y1="198" x2="804" y2="231" marker-end="url(#pipeline-arrow)"/>
+        <line class="flow" x1="352" y1="288" x2="352" y2="319" marker-end="url(#pipeline-arrow)"/>
+        <line class="flow" x1="804" y1="288" x2="804" y2="319" marker-end="url(#pipeline-arrow)"/>
+        <line class="flow" x1="352" y1="376" x2="352" y2="407" marker-end="url(#pipeline-arrow)"/>
+        <line class="flow" x1="352" y1="512" x2="352" y2="543" marker-end="url(#pipeline-arrow)"/>
+        <line class="flow-focal" x1="352" y1="600" x2="352" y2="631" marker-end="url(#pipeline-arrow-accent)"/>
+
+        <!-- Validation set feeds: photos into predict, ground truth into evaluate. Training is bypassed. -->
+        <path class="feed" d="M764 452 V564 Q764 572 756 572 H657" marker-end="url(#pipeline-arrow)"/>
+        <line class="feed" x1="844" y1="452" x2="844" y2="631" marker-end="url(#pipeline-arrow)"/>
+
+        <!-- Connector labels, each on a paper mask beside its segment -->
+        <rect class="card-mask" x="360" y="296" width="100" height="16" rx="2"/>
+        <text class="label" x="364" y="308" data-run="train-photos">823 TO TRAIN</text>
+        <rect class="card-mask" x="812" y="296" width="100" height="16" rx="2"/>
+        <text class="label" x="816" y="308">300 HELD OUT</text>
+        <rect class="card-mask" x="360" y="520" width="64" height="16" rx="2"/>
+        <text class="label" x="364" y="532">WEIGHTS</text>
+        <rect class="card-mask" x="360" y="608" width="96" height="16" rx="2"/>
+        <text class="label" x="364" y="620">PREDICTIONS</text>
+        <rect class="card-mask" x="682" y="548" width="52" height="16" rx="2"/>
+        <text class="label" x="708" y="560" text-anchor="middle">PHOTOS</text>
+        <rect class="card-mask" x="736" y="600" width="100" height="16" rx="2"/>
+        <text class="label" x="832" y="612" text-anchor="end">GROUND TRUTH</text>
+
+        <!-- Data bar. Width is linear, 880 px for 3,904 images. -->
+        <text class="tag tag-soft" x="40" y="138">SYNTHETIC RENDERS</text>
+        <text class="tag tag-soft" x="667" y="138">REAL · TRAIN</text>
+        <text class="tag tag-soft" x="920" y="138" text-anchor="end">REAL · VALIDATION</text>
+
+        <rect class="seg-planned" x="40.5" y="148.5" width="624" height="39"/>
+        <rect class="seg-train" x="667" y="148" width="184" height="40"/>
+        <rect class="seg-val" x="853" y="148" width="67" height="40"/>
+
+        <text class="numeral" x="56" y="177">2,781</text>
+        <text class="tag tag-soft" x="648" y="172" text-anchor="end">PLANNED · RUNS B AND C</text>
+        <text class="numeral on-ink" x="681" y="177" data-run="train-photos">823</text>
+        <text class="numeral on-accent" x="886.5" y="177" text-anchor="middle">300</text>
+
+        <!-- 1 · Split -->
+        <text class="tag" x="40" y="246">STEP 1 · SPLIT</text>
+        <text class="name" x="40" y="268">Freeze the validation set</text>
+        <text class="sub" x="40" y="286">data_split.py</text>
+        <rect class="card-mask" x="320" y="232" width="600" height="56" rx="6"/>
+        <rect class="card" x="320" y="232" width="600" height="56" rx="6"/>
+        <text class="k" x="336" y="256">sample</text>
+        <text class="v" x="416" y="256">300 of 1,123 real photos</text>
+        <text class="hint" x="904" y="256" text-anchor="end">random.seed(2)</text>
+        <text class="k" x="336" y="276">saved</text>
+        <text class="v" x="416" y="276">splits/val_image_ids.json</text>
+        <text class="hint" x="904" y="276" text-anchor="end">frozen in git</text>
+
+        <!-- 2 · Convert -->
+        <text class="tag" x="40" y="334">STEP 2 · CONVERT</text>
+        <text class="name" x="40" y="356">COCO boxes to YOLO labels</text>
+        <text class="sub" x="40" y="374">convert_coco_to_yolo.py</text>
+        <rect class="card-mask" x="320" y="320" width="336" height="56" rx="6"/>
+        <rect class="card" x="320" y="320" width="336" height="56" rx="6"/>
+        <text class="k" x="336" y="344">box</text>
+        <text class="v" x="416" y="344">corner pixels to center, 0..1</text>
+        <text class="k" x="336" y="364">class</text>
+        <text class="v" x="416" y="364">ids 1..369 to 0..368</text>
+
+        <!-- Validation set: held out, read again by predict and evaluate -->
+        <rect class="card-mask" x="688" y="320" width="232" height="132" rx="6"/>
+        <rect class="card-input" x="688" y="320" width="232" height="132" rx="6"/>
+        <text class="tag" x="704" y="347">HELD OUT</text>
+        <text class="name" x="704" y="373">Validation set</text>
+        <text class="sub" x="704" y="397">300 real photos</text>
+        <text class="sub" x="704" y="415">4,097 ground-truth boxes</text>
+        <text class="sub" x="704" y="433">not in the training list</text>
+
+        <!-- 3 · Train -->
+        <text class="tag" x="40" y="422">STEP 3 · TRAIN</text>
+        <text class="name" x="40" y="444">Fine-tune YOLOv8n</text>
+        <text class="sub" x="40" y="462">train.py</text>
+        <text class="sub" x="40" y="480" data-run="train-time">~64 min on a Mac M4</text>
+        <rect class="card-mask" x="320" y="408" width="336" height="104" rx="6"/>
+        <rect class="card" x="320" y="408" width="336" height="104" rx="6"/>
+        <text class="k" x="336" y="434">model</text>
+        <text class="v" x="416" y="434" data-run="model">yolov8n.pt, pretrained</text>
+        <text class="k" x="336" y="454">input</text>
+        <text class="v" x="416" y="454" data-run="imgsz-batch">imgsz 640 · batch 16</text>
+        <text class="k" x="336" y="474">epochs</text>
+        <text class="v" x="416" y="474" data-run="epochs">50</text>
+        <text class="k" x="336" y="494">optimizer</text>
+        <text class="v" x="416" y="494" data-run="optimizer">AdamW · lr0 0.001</text>
+
+        <!-- 4 · Predict -->
+        <text class="tag" x="40" y="558">STEP 4 · PREDICT</text>
+        <text class="name" x="40" y="580">Predict on held-out photos</text>
+        <text class="sub" x="40" y="598">predict_val.py</text>
+        <rect class="card-mask" x="320" y="544" width="336" height="56" rx="6"/>
+        <rect class="card" x="320" y="544" width="336" height="56" rx="6"/>
+        <text class="k" x="336" y="568">conf</text>
+        <text class="v" x="416" y="568">0.001, keeps the full ranking</text>
+        <text class="k" x="336" y="588">output</text>
+        <text class="v" x="416" y="588">COCO json, ids back to 1..369</text>
+
+        <!-- 5 · Evaluate (focal) -->
+        <text class="tag" x="40" y="646">STEP 5 · EVALUATE</text>
+        <text class="name" x="40" y="668">Score against ground truth</text>
+        <text class="sub" x="40" y="686">evaluate_map.py · pycocotools</text>
+        <rect class="card-mask" x="320" y="632" width="600" height="56" rx="6"/>
+        <rect class="card-focal" x="320" y="632" width="600" height="56" rx="6"/>
+        <text class="numeral" x="336" y="670" data-run="map50">0.455</text>
+        <text class="tag" x="416" y="656">mAP@0.5 · MEASURED ON 300 VALIDATION PHOTOS</text>
+        <text class="v" x="416" y="676" data-run="run-id">run A2 · scored locally, not on a leaderboard</text>
+
+        <!-- Footer -->
+        <text class="aside" x="40" y="724">Change the split and every earlier score is void.</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>

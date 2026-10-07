@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelf product detection · experiment loop</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #2d3142;
+      --color-paper-2: #393e53;
+      --color-ink:     #f5f5f5;
+      --color-muted:   #bfc0c0;
+      --color-soft:    #8e98ac;
+      --color-rule:    rgba(245,245,245,0.16);
+      --color-accent:  #f08a59;
+      --color-accent-tint: rgba(240,138,89,0.12);
+      --color-card:    #393e53;
+      --color-card-stroke: rgba(245,245,245,0.22);
+      --color-input:   #2d3142;
+      --color-input-stroke: rgba(245,245,245,0.38);
+      --color-on-accent: #2d3142;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+
+    /* Diagram type */
+    .bg        { fill: var(--color-paper); }
+    .headline  { font-family: var(--font-serif); font-size: 40px; fill: var(--color-ink); letter-spacing: -0.02em; }
+    .numeral   { font-family: var(--font-serif); font-size: 28px; fill: var(--color-ink); }
+    .name      { font-family: var(--font-sans);  font-size: 16px; font-weight: 600; fill: var(--color-ink); text-anchor: middle; }
+    .sub       { font-family: var(--font-mono);  font-size: 12px; fill: var(--color-muted); }
+    .mid       { text-anchor: middle; }
+    .tag       { font-family: var(--font-mono);  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; fill: var(--color-muted); text-anchor: middle; }
+    .tag-hub   { fill: var(--color-soft); text-anchor: start; }
+    .tag-hub-end { fill: var(--color-soft); text-anchor: end; }
+    .label     { font-family: var(--font-mono);  font-size: 10px; font-weight: 500; letter-spacing: 0.16em; fill: var(--color-muted); }
+
+    /* Loop */
+    .ring      { fill: none; stroke: var(--color-muted); stroke-width: 1.5; }
+    .write     { fill: none; stroke: var(--color-soft); stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .read      { fill: none; stroke: var(--color-muted); stroke-width: 1.5; }
+    .mask      { fill: var(--color-paper); }
+    .station   { fill: var(--color-paper); stroke: var(--color-ink); stroke-width: 1; }
+    .hub       { fill: var(--color-paper-2); stroke: var(--color-soft); stroke-width: 1; }
+    .station-focal { fill: var(--color-accent-tint); stroke: var(--color-accent); stroke-width: 1.5; }
+    .head      { fill: var(--color-muted); }
+    .head-soft { fill: var(--color-soft); }
+
+    /* Results table inside the hub */
+    .row         { fill: var(--color-paper); stroke: var(--color-card-stroke); stroke-width: 1; }
+    .row-focal   { fill: var(--color-accent-tint); stroke: var(--color-accent); stroke-width: 1.5; }
+    .row-planned { fill: none; stroke: var(--color-soft); stroke-width: 1; stroke-dasharray: 4 3; }
+    .id          { font-family: var(--font-mono); font-size: 12px; font-weight: 600; fill: var(--color-ink); }
+    .chg         { font-family: var(--font-mono); font-size: 12px; fill: var(--color-muted); }
+    .val         { font-family: var(--font-mono); font-size: 12px; font-weight: 600; fill: var(--color-ink); text-anchor: end; }
+    .planned     { font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.16em; fill: var(--color-soft); text-anchor: end; }
+
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Loop · Shelf product detection</p>
+    <h1>One experiment, one change</h1>
+
+    <div class="diagram-container">
+      <!-- Numbers that depend on the runs carry data-run. List them with: grep -n data-run docs/diagrams/experiment-loop.html
+           To turn a planned row into a measured one: class row-planned to row, and the PLANNED text to class val with the score. -->
+      <svg viewBox="0 0 960 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="experiment-loop-dark-title experiment-loop-dark-desc">
+        <title id="experiment-loop-dark-title">One experiment, one change: the loop behind the results table</title>
+        <desc id="experiment-loop-dark-desc">A cycle of four steps around the results table. State one hypothesis, change one setting against a baseline row, train and score on the same 300 validation photos, then write one table row with the conclusion. Run A used the automatic optimizer setting, which resolved to a learning rate of 2.7e-05, and scored mAP at 0.5 of 0.024. Run A2 set AdamW with a learning rate of 0.001, changed nothing else, and scored 0.455, about 19 times higher. Runs A3, B and C are planned and have no score yet.</desc>
+        <defs>
+          <marker id="experiment-loop-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+          <marker id="experiment-loop-arrow-soft" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head-soft" points="0 0, 8 3, 0 6"/></marker>
+        </defs>
+
+        <rect class="bg" width="100%" height="100%"/>
+
+        <!-- Header -->
+        <text class="headline" x="40" y="76">One experiment, one change.</text>
+        <text class="sub" x="40" y="104" letter-spacing="0.12em">EVERY ROW SCORED ON THE SAME 300 VALIDATION PHOTOS</text>
+        <text class="numeral" x="920" y="72" text-anchor="end" data-run="story-scores">0.024 to 0.455</text>
+        <text class="sub" x="920" y="104" text-anchor="end" letter-spacing="0.12em" data-run="story-caption">A TO A2 · ONE CHANGE · ABOUT 19X</text>
+
+        <!-- Ring: four clockwise arcs on one ellipse, centre 480,396, rx 332, ry 212 -->
+        <path class="ring" d="M640 210.24 A332 212 0 0 1 802.82 346.5" marker-end="url(#experiment-loop-arrow)"/>
+        <path class="ring" d="M803.38 444 A332 212 0 0 1 641.5 581.23" marker-end="url(#experiment-loop-arrow)"/>
+        <path class="ring" d="M320 581.76 A332 212 0 0 1 157.18 445.5" marker-end="url(#experiment-loop-arrow)"/>
+        <path class="ring" d="M156.62 348 A332 212 0 0 1 318.5 210.77" marker-end="url(#experiment-loop-arrow)"/>
+
+        <!-- Spokes: the conclusion adds a row, the next change starts from a row -->
+        <line class="write" x1="258" y1="396" x2="334.5" y2="396" marker-end="url(#experiment-loop-arrow-soft)"/>
+        <line class="read" x1="626" y1="396" x2="702.5" y2="396" marker-end="url(#experiment-loop-arrow)"/>
+
+        <!-- Spoke labels -->
+        <rect class="mask" x="264" y="372" width="64" height="16" rx="2"/>
+        <text class="label" x="296" y="384" text-anchor="middle">ADDS ROW</text>
+        <rect class="mask" x="632" y="372" width="64" height="16" rx="2"/>
+        <text class="label" x="664" y="384" text-anchor="middle">BASELINE</text>
+
+        <!-- Station 1, top -->
+        <rect class="station" x="320" y="136" width="320" height="96" rx="6"/>
+        <text class="tag" x="480" y="160">01 · HYPOTHESIS</text>
+        <text class="name" x="480" y="184">Name one cause</text>
+        <text class="sub mid" x="480" y="204">what limits the score right now</text>
+        <text class="sub mid" x="480" y="220">one cause, stated before the run</text>
+
+        <!-- Station 2, right (focal) -->
+        <rect class="station-focal" x="704" y="348" width="216" height="96" rx="6"/>
+        <text class="tag" x="812" y="372">02 · ONE CHANGE</text>
+        <text class="name" x="812" y="396">Change one setting</text>
+        <text class="sub mid" x="812" y="416">everything else stays</text>
+        <text class="sub mid" x="812" y="432">as in the baseline row</text>
+
+        <!-- Station 3, bottom -->
+        <rect class="station" x="320" y="560" width="320" height="96" rx="6"/>
+        <text class="tag" x="480" y="584">03 · MEASURE</text>
+        <text class="name" x="480" y="608">Train, then score</text>
+        <text class="sub mid" x="480" y="628">same 300 validation photos</text>
+        <text class="sub mid" x="480" y="644">frozen split · seed 2</text>
+
+        <!-- Station 4, left -->
+        <rect class="station" x="40" y="348" width="216" height="96" rx="6"/>
+        <text class="tag" x="148" y="372">04 · CONCLUSION</text>
+        <text class="name" x="148" y="396">Write one table row</text>
+        <text class="sub mid" x="148" y="416">change, mAP@0.5, time</text>
+        <text class="sub mid" x="148" y="432">and what it showed</text>
+
+        <!-- Hub: the results table, one row per pass -->
+        <rect class="mask" x="336" y="316" width="288" height="160" rx="6"/>
+        <rect class="hub" x="336" y="316" width="288" height="160" rx="6"/>
+        <text class="tag tag-hub" x="352" y="340">RESULTS TABLE</text>
+        <text class="tag tag-hub-end" x="608" y="340">mAP@0.5</text>
+
+        <rect class="row" x="344" y="350" width="272" height="20" rx="2"/>
+        <text class="id" x="352" y="364">A</text>
+        <text class="chg" x="388" y="364">auto · lr 2.7e-05</text>
+        <text class="val" x="608" y="364" data-run="A">0.024</text>
+
+        <rect class="row-focal" x="344" y="374" width="272" height="20" rx="2"/>
+        <text class="id" x="352" y="388">A2</text>
+        <text class="chg" x="388" y="388">AdamW · lr0 0.001</text>
+        <text class="val" x="608" y="388" data-run="A2">0.455</text>
+
+        <rect class="row-planned" x="344" y="398" width="272" height="20" rx="2"/>
+        <text class="id" x="352" y="412">A3</text>
+        <text class="chg" x="388" y="412">imgsz 960</text>
+        <text class="planned" x="608" y="412" data-run="A3">PLANNED</text>
+
+        <rect class="row-planned" x="344" y="422" width="272" height="20" rx="2"/>
+        <text class="id" x="352" y="436">B</text>
+        <text class="chg" x="388" y="436">+ synthetic images</text>
+        <text class="planned" x="608" y="436" data-run="B">PLANNED</text>
+
+        <rect class="row-planned" x="344" y="446" width="272" height="20" rx="2"/>
+        <text class="id" x="352" y="460">C</text>
+        <text class="chg" x="388" y="460">synthetic pretrain</text>
+        <text class="planned" x="608" y="460" data-run="C">PLANNED</text>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
