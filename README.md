@@ -14,7 +14,7 @@ The best run so far is A3 with mAP@0.5 of 0.530. I measured it on 300 real photo
 | A2 | learning rate set explicitly | 0.455 |
 | A3 | image size 960 instead of 640 | 0.530 |
 
-The synthetic images are not used yet. Experiments B and C, which add them, have no result. `RESULTS.md` is the source of truth for every score in this README.
+The synthetic images are not used yet. Experiments B and C, which add them, have no result. [`RESULTS.md`](RESULTS.md) is the source of truth for every score in this README.
 
 ## Task and data
 
@@ -23,13 +23,13 @@ The synthetic images are not used yet. Experiments B and C, which add them, have
 - The test set contains real photos only and has no annotations.
 - Only products from the 369 classes have boxes. Other products on the same shelf have none, so the model learns them as background.
 
-The data is not in this repository. It comes from the organizers and the rules for publishing it are not confirmed. `taxonomy.json` and `test_images.json` are the organizers' files.
+The data is not in this repository. It comes from the organizers and the rules for publishing it are not confirmed. [`taxonomy.json`](taxonomy.json) and [`test_images.json`](test_images.json) are the organizers' files.
 
 ## Method
 
 ### Validation split
 
-I took 300 of the 1123 real photos as the validation set, with `random.seed(2)`. The ids are frozen in `splits/val_image_ids.json`, which is tracked in git. The other 823 real photos are the training set for every run so far.
+I took 300 of the 1123 real photos as the validation set, with `random.seed(2)`. The ids are frozen in [`splits/val_image_ids.json`](splits/val_image_ids.json), which is tracked in git. The other 823 real photos are the training set for every run so far.
 
 The split is frozen because a score only means something next to another score on the same photos. Changing the split invalidates every row in the results table. Validation uses real photos only because the test set is real photos only.
 
@@ -37,13 +37,13 @@ The 300 validation photos carry 4097 ground-truth boxes.
 
 ### Pipeline
 
-1. `scripts/validation/data_split.py` samples the 300 validation ids and saves them.
-2. `scripts/evaluation/build_val_ground_truth.py` cuts the COCO annotations down to those 300 photos and writes the ground truth for evaluation.
-3. `scripts/training/convert_coco_to_yolo.py` writes the train and validation image lists and one YOLO label file per photo. COCO boxes are `[x, y, width, height]` in pixels from the top-left corner. YOLO wants the box center and size as fractions of the image size. COCO class ids run from 1 to 369 and YOLO indices from 0 to 368, so the script subtracts 1. Validation photos are excluded from the training list.
-4. `scripts/training/make_dataset_yaml.py` writes the dataset config that Ultralytics reads.
-5. `scripts/training/train.py` fine-tunes the model on the Mac. The Kaggle runs make the same `model.train` call from a notebook in `notebooks/training/`, with `device=0`.
-6. `scripts/training/predict_val.py` loads `best.pt` from the run folder, predicts on the 300 validation photos at the image size used in training and converts the output back to COCO format. It adds 1 to the class index and turns corner coordinates into `[x, y, width, height]`.
-7. `scripts/evaluate_map.py` scores the predictions against the ground truth with `pycocotools`.
+1. [`scripts/validation/data_split.py`](scripts/validation/data_split.py) samples the 300 validation ids and saves them.
+2. [`scripts/evaluation/build_val_ground_truth.py`](scripts/evaluation/build_val_ground_truth.py) cuts the COCO annotations down to those 300 photos and writes the ground truth for evaluation.
+3. [`scripts/training/convert_coco_to_yolo.py`](scripts/training/convert_coco_to_yolo.py) writes the train and validation image lists and one YOLO label file per photo. COCO boxes are `[x, y, width, height]` in pixels from the top-left corner. YOLO wants the box center and size as fractions of the image size. COCO class ids run from 1 to 369 and YOLO indices from 0 to 368, so the script subtracts 1. Validation photos are excluded from the training list.
+4. [`scripts/training/make_dataset_yaml.py`](scripts/training/make_dataset_yaml.py) writes the dataset config that Ultralytics reads.
+5. [`scripts/training/train.py`](scripts/training/train.py) fine-tunes the model on the Mac. The Kaggle runs make the same `model.train` call from a notebook in [`notebooks/training/`](notebooks/training/), with `device=0`.
+6. [`scripts/training/predict_val.py`](scripts/training/predict_val.py) loads `best.pt` from the run folder, predicts on the 300 validation photos at the image size used in training and converts the output back to COCO format. It adds 1 to the class index and turns corner coordinates into `[x, y, width, height]`.
+7. [`scripts/evaluate_map.py`](scripts/evaluate_map.py) scores the predictions against the ground truth with `pycocotools`.
 
 ### Training setup
 
@@ -137,7 +137,7 @@ A3 changed only the image size. mAP@0.5 went from 0.450 to 0.530, which is 8.0 p
 - The class loss fell the most, from 1.11 to 0.92 in training. The box loss fell from 0.81 to 0.71 and the dfl loss stayed at 0.95. This fits the hypothesis about readable labels and does not prove it. Losses at different image sizes compare only roughly, because the model scores 18900 candidate boxes per image at 960 and 8400 at 640.
 - The run is not overfitted. Validation class loss is 0.99 against 0.92 in training and was still falling.
 - mAP50 gained 3.6 points over the last 10 epochs in the Ultralytics validation. Whether more epochs help is untested.
-- A3 returned fewer boxes than K640 at confidence 0.001, 29103 against 36424, while finding more objects. The number of boxes says nothing about quality. Why it fell is a hypothesis in `OBSERVATIONS.md`.
+- A3 returned fewer boxes than K640 at confidence 0.001, 29103 against 36424, while finding more objects. The number of boxes says nothing about quality. Why it fell is a hypothesis in [`OBSERVATIONS.md`](OBSERVATIONS.md).
 
 ![Training curves of run A3](assets/a3-results.png)
 
@@ -149,7 +149,7 @@ Every run so far trained on the 823 real photos. The 2781 synthetic renders are 
 
 ## Problems observed
 
-The full log with evidence is in `OBSERVATIONS.md`. The ones worth knowing:
+The full log with evidence is in [`OBSERVATIONS.md`](OBSERVATIONS.md). The ones worth knowing:
 
 - **Learning rate chosen automatically.** Described above. Status: measured and confirmed by run A2.
 - **Slow first epoch.** About 6.3 seconds per batch of 16. Ultralytics uses 0 dataloader workers on MPS, so one thread decoded 12-megapixel JPEGs and built mosaics. With `cache="ram"` a batch takes about 0.8 to 1 second. Status: resolved.
@@ -172,7 +172,7 @@ The full log with evidence is in `OBSERVATIONS.md`. The ones worth knowing:
 - **Synthetic images are renders, not photos.** No run so far uses them.
 - **Few experiments.** This is a solo redo planned for 24 hours of net work. There is no extensive hyperparameter search.
 
-`LIMITATIONS.md` has the longer version.
+[`LIMITATIONS.md`](LIMITATIONS.md) has the longer version.
 
 ## How to reproduce
 
@@ -193,20 +193,20 @@ uv run python scripts/training/predict_val.py
 uv run python scripts/evaluate_map.py
 ```
 
-- `splits/val_image_ids.json` is already in the repository. Do not run `data_split.py` again unless you mean to change the split.
+- [`splits/val_image_ids.json`](splits/val_image_ids.json) is already in the repository. Do not run `data_split.py` again unless you mean to change the split.
 - `train.py` uses `device="mps"`. Change it on other hardware. The run name and the settings are constants at the top of the file.
 - `predict_val.py` has the path to the weights and the image size as constants. Point it at the run you want to score and set the image size used in training.
 - `evaluate_map.py` prints the COCO summary. The second line is the AP at IoU 0.50.
 
 ### Runs on Kaggle
 
-K640 and A3 were trained with the two notebooks in `notebooks/training/`. A notebook clones this repository, copies the images from a private Kaggle dataset, runs the same two preparation scripts and calls `model.train` with the A2 settings and `device=0`. The notebooks differ only in `NAME` and `IMGSZ`. Their cell outputs hold the full training logs.
+K640 and A3 were trained with the two notebooks in [`notebooks/training/`](notebooks/training/). A notebook clones this repository, copies the images from a private Kaggle dataset, runs the same two preparation scripts and calls `model.train` with the A2 settings and `device=0`. The notebooks differ only in `NAME` and `IMGSZ`. Their cell outputs hold the full training logs.
 
 The dataset is private, so the notebooks will not run for anyone else as they are. I downloaded `best.pt` from the notebook output and scored it on the Mac with `predict_val.py` and `evaluate_map.py`.
 
 ### Helper scripts
 
-Three helper scripts are not part of the main path. `scripts/evaluation/make_perfect_predictions.py` builds predictions from the ground truth, to see what the evaluator prints for a perfect answer. `scripts/training/draw_labels.py` draws the YOLO labels of one photo to check the conversion. `scripts/validation/val_image_ids.py` prints how many classes appear in each part of the split.
+Three helper scripts are not part of the main path. [`scripts/evaluation/make_perfect_predictions.py`](scripts/evaluation/make_perfect_predictions.py) builds predictions from the ground truth, to see what the evaluator prints for a perfect answer. [`scripts/training/draw_labels.py`](scripts/training/draw_labels.py) draws the YOLO labels of one photo to check the conversion. [`scripts/validation/val_image_ids.py`](scripts/validation/val_image_ids.py) prints how many classes appear in each part of the split.
 
 ## Repository layout
 
@@ -228,10 +228,10 @@ docs/organizers/README.md  original hackathon README, in Polish
 ONBOARDING.md            organizers' onboarding guide, in Polish
 ```
 
-`predict.py` is the command line interface the organizers required. It is still their baseline. By default it loads the COCO-pretrained `yolov8n.pt` and is not yet connected to the weights trained here.
+[`predict.py`](predict.py) is the command line interface the organizers required. It is still their baseline. By default it loads the COCO-pretrained `yolov8n.pt` and is not yet connected to the weights trained here.
 
 ## Origin and license
 
-The repository started as the organizers' template for Hackology II. Their original instructions are in `docs/organizers/README.md` and `ONBOARDING.md`.
+The repository started as the organizers' template for Hackology II. Their original instructions are in [`docs/organizers/README.md`](docs/organizers/README.md) and [`ONBOARDING.md`](ONBOARDING.md).
 
-The code is under the GNU Affero General Public License v3, see `LICENSE`. The license does not cover the organizers' data files.
+The code is under the GNU Affero General Public License v3, see [`LICENSE`](LICENSE). The license does not cover the organizers' data files.
