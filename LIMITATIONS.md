@@ -17,8 +17,5 @@ Collected during the work so the README can state them honestly. Add new items a
 
 ## Scope
 
-- **Solo redo, 24 h net of work.** Few experiments, no extensive hyperparameter search.
-
-## Authorship note
-
-Parts of the pipeline were written with AI assistance, at my explicit request, to save time: `group_boxes_by_image`, `coco_box_to_yolo_line`, `write_yolo_labels` in `scripts/training/convert_coco_to_yolo.py`, `scripts/training/make_dataset_yaml.py`, `scripts/training/train.py`, `scripts/training/predict_val.py`. The rest is mine. The README should say this plainly.
+- **Solo redo, planned for 24 h net of work.** I stopped timing during the experiments and most likely went over it. Few experiments, no extensive hyperparameter search.
+- **One run per variant.** No run was repeated, so the spread between runs is unknown. Differences below about one point are treated as noise.
