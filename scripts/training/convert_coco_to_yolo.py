@@ -16,7 +16,7 @@ val_image_ids = set(val_image_ids)
 val_images = [img for img in all_data_imgs if img["id"] in val_image_ids and img["source_dataset"] == "DPR_MIR_3963_QUALITY_EVALUATION_09072025"]
 
 
-training_data = "synth" # or synth
+training_data = "real" # or real/synth
 
 if training_data == "real":
     images_for_training = [img for img in all_data_imgs if img["id"] not in val_image_ids and img["source_dataset"] == "DPR_MIR_3963_QUALITY_EVALUATION_09072025"]
