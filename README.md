@@ -4,18 +4,41 @@ Object detection on photos of store shelves. There are 369 classes and each clas
 
 This repository is my solo redo of the Hackology II hackathon task, which ran on 23 and 24 May 2026. I am doing it again alone so that I can explain every step. The plan was a budget of 24 hours of net work. I stopped timing during the experiments and most likely went over it. The score matters less than understanding where it comes from.
 
-## Results at a glance
+## Results
 
-The best run is B with mAP@0.5 of 0.655. I measured it on 300 real photos held out from training, using my own validation split. It is a local number and not a leaderboard score. The hackathon leaderboard no longer accepts submissions.
+The best run is B with mAP@0.5 of 0.655. B30 scores 0.648 in 57% of B's training time, so it is the base for further runs. Both numbers are measured on 300 real photos held out from training, using my own validation split. They are local numbers, not leaderboard scores. The hackathon leaderboard no longer accepts submissions.
 
-| Run | The one change | mAP@0.5 |
-|---|---|---|
-| A | baseline with Ultralytics defaults | 0.024 |
-| A2 | learning rate set explicitly | 0.455 |
-| A3 | image size 960 instead of 640 | 0.530 |
-| B | the 2781 synthetic images added to training | 0.655 |
+One experiment is one change. Every row is scored on the same 300 validation photos.
 
-B changes two things together, the data and the number of optimizer steps per epoch, so I cannot say how much of the gain comes from which. Pretraining on the synthetic images (experiment C) has no result. [`RESULTS.md`](RESULTS.md) is the source of truth for every score in this README.
+| ID | What changed | Optimizer steps | mAP@0.5 | Ultralytics mAP50 | Training time |
+|---|---|---|---|---|---|
+| A | Baseline. Real photos only, YOLOv8n, image size 640, 50 epochs, Ultralytics defaults | 2600 | 0.024 | 0.0258 | 58 min, Mac |
+| A2 | A with the optimizer set explicitly to AdamW, `lr0=0.001` | 2600 | 0.455 | 0.4987 | 64 min, Mac |
+| K640 | Control, not an experiment. A2 repeated on Kaggle with no setting changed | 2600 | 0.450 | 0.4831 | 12 min, Kaggle |
+| A3 | K640 with image size 960 | 2600 | 0.530 | 0.5620 | 26 min, Kaggle |
+| B | A3 plus the 2781 synthetic images | 11300 | 0.655 | 0.6873 | 1 h 52 min, Kaggle |
+| B30 | B with 30 epochs instead of 50 | 6780 | 0.648 | 0.6676 | 1 h 04 min, Kaggle |
+| A3-130 | A3 with 130 epochs instead of 50 | 6760 | 0.629 | 0.6696 | 1 h 08 min, Kaggle |
+| C | Pretrain on synthetic images, fine-tune on real photos | | not run | | |
+
+mAP@0.5 is my number from `evaluate_map.py` and the only one I compare runs by. The Ultralytics column is a cross-check, see [How the score is computed](#how-the-score-is-computed). Differences below about 0.01 are noise, see [Limitations](#limitations). [`RESULTS.md`](RESULTS.md) has the full numbers and conclusions per run, [`OBSERVATIONS.md`](OBSERVATIONS.md) the evidence and open questions.
+
+### What each run showed
+
+- **A.** Undertrained. With `optimizer=auto` Ultralytics ignored `lr0=0.01` and picked AdamW with a learning rate of 2.7e-05, about 370 times smaller. AP@0.75 (0.022) was close to AP@0.5, so boxes were placed well and classification was the weak part.
+- **A2.** One change gave a score about 19 times higher, so the learning rate was the bottleneck.
+- **K640.** The difference to A2 is -0.005, below the noise level. Moving to Kaggle changes the time, not the score, so later Kaggle runs are compared with K640.
+- **A3.** At 640 a bottle is about 24 pixels wide and its label is hard to read. Image size 960 gave +0.080 over K640, and the class loss fell the most. This fits the idea that labels became readable, without proving it.
+- **B.** +0.125 over A3, but each epoch also had 4.4 times more optimizer steps, so the gain mixed two causes.
+- **B30 and A3-130.** These two separate the causes. Both make about 6,800 optimizer steps, B30 with the synthetic images and A3-130 without. Training A3 longer gave +0.099, so A3 was undertrained. The synthetic images gave +0.019 at the same number of steps. B30 is 0.007 below B, within the noise.
+
+![Training curves of run B](assets/b-results.png)
+
+The figure is `results.png` as Ultralytics wrote it for B. Its mAP50 is the Ultralytics number. The dip at epoch 41 is mosaic augmentation switching off for the last 10 epochs.
+
+### Not done yet
+
+C has no result. An error analysis per class is in progress. It should show which classes score near zero, and whether they are the ones with few real photos.
 
 ## Task and data
 
@@ -30,7 +53,7 @@ The data is not in this repository. It comes from the organizers and the rules f
 
 ### Validation split
 
-I took 300 of the 1123 real photos as the validation set, with `random.seed(2)`. The ids are frozen in [`splits/val_image_ids.json`](splits/val_image_ids.json), which is tracked in git. The other 823 real photos are the real part of the training set in every run. Run B adds the synthetic images to them.
+I took 300 of the 1123 real photos as the validation set, with `random.seed(2)`. The ids are frozen in [`splits/val_image_ids.json`](splits/val_image_ids.json), which is tracked in git. The other 823 real photos are the real part of the training set in every run.
 
 The split is frozen because a score only means something next to another score on the same photos. Changing the split invalidates every row in the results table. Validation uses real photos only because the test set is real photos only.
 
@@ -40,7 +63,7 @@ The 300 validation photos carry 4097 ground-truth boxes.
 
 1. [`scripts/validation/data_split.py`](scripts/validation/data_split.py) samples the 300 validation ids and saves them.
 2. [`scripts/evaluation/build_val_ground_truth.py`](scripts/evaluation/build_val_ground_truth.py) cuts the COCO annotations down to those 300 photos and writes the ground truth for evaluation.
-3. [`scripts/training/convert_coco_to_yolo.py`](scripts/training/convert_coco_to_yolo.py) writes the train and validation image lists and one YOLO label file per photo. COCO boxes are `[x, y, width, height]` in pixels from the top-left corner. YOLO wants the box center and size as fractions of the image size. COCO class ids run from 1 to 369 and YOLO indices from 0 to 368, so the script subtracts 1. Validation photos are excluded from the training list. A constant at the top of the script picks the training photos: `"real"` gives the 823 real photos and `"synth"` adds the 2781 synthetic renders, 3604 in total.
+3. [`scripts/training/convert_coco_to_yolo.py`](scripts/training/convert_coco_to_yolo.py) writes the train and validation image lists and one YOLO label file per photo. COCO boxes are `[x, y, width, height]` in pixels from the top-left corner. YOLO wants the box center and size as fractions of the image size. COCO class ids run from 1 to 369 and YOLO indices from 0 to 368, so the script subtracts 1. Validation photos are excluded from the training list. A constant `training_data` at the top of the script picks the training photos: `"real"` gives the 823 real photos and `"synth"` adds the 2781 synthetic renders, 3604 in total.
 4. [`scripts/training/make_dataset_yaml.py`](scripts/training/make_dataset_yaml.py) writes the dataset config that Ultralytics reads.
 5. [`scripts/training/train.py`](scripts/training/train.py) fine-tunes the model on the Mac. The Kaggle runs make the same `model.train` call from a notebook in [`notebooks/training/`](notebooks/training/), with `device=0`.
 6. [`scripts/validation/predict_val.py`](scripts/validation/predict_val.py) loads `best.pt` from the run folder, predicts on the 300 validation photos at the image size used in training and converts the output back to COCO format. It adds 1 to the class index and turns corner coordinates into `[x, y, width, height]`.
@@ -48,133 +71,34 @@ The 300 validation photos carry 4097 ground-truth boxes.
 
 ### Training setup
 
-Shared by every run:
-
 | Setting | Value |
 |---|---|
 | Model | YOLOv8n, pretrained weights `yolov8n.pt` |
 | Library | Ultralytics 8.4.51 |
-| Batch size | 16 |
-| Epochs | 50 |
-| Other | `cache="ram"` |
-
-Different per run:
-
-| Run | Training photos | Optimizer | Image size | Hardware | Training time |
-|---|---|---|---|---|---|
-| A | 823 real | `optimizer=auto`, which resolved to AdamW with learning rate 2.7e-05 | 640 | Mac M4, 24 GB RAM, `device="mps"` | about 58 min |
-| A2 | 823 real | AdamW with `lr0=0.001`, set explicitly | 640 | Mac M4, `device="mps"` | about 64 min |
-| K640 | 823 real | as A2 | 640 | Kaggle, Tesla T4, `device=0` | about 12 min |
-| A3 | 823 real | as A2 | 960 | Kaggle, Tesla T4, `device=0` | about 26 min |
-| B | 3604, of which 823 real and 2781 synthetic | as A2 | 960 | Kaggle, Tesla T4, `device=0` | about 1 h 52 min |
-
-The Kaggle runs used Python 3.13.15 and PyTorch 2.11.0 with CUDA. The Mac runs used Python 3.14 on MPS.
+| Batch size | 16, with `cache="ram"` |
+| Optimizer | AdamW with `lr0=0.001` from A2 on. A used `optimizer=auto`, which resolved to AdamW with learning rate 2.7e-05 |
+| Image size | 640 for A, A2 and K640, 960 from A3 on |
+| Training photos | 823 real. B and B30 add the 2781 synthetic renders, 3604 in total |
+| Epochs | 50, except B30 (30) and A3-130 (130) |
+| Hardware | A and A2 on a Mac M4 with 24 GB RAM, `device="mps"`, Python 3.14. The other runs on a Kaggle Tesla T4, `device=0`, Python 3.13.15, PyTorch 2.11.0 with CUDA |
 
 ### How the score is computed
 
 `predict_val.py` runs the model with a confidence threshold of 0.001. mAP is computed from the whole ranking of detections, so the low-confidence boxes are needed too.
 
-`evaluate_map.py` runs `COCOeval` from `pycocotools`. The number I report is the AP at IoU 0.50 from its summary. Every run is scored this way on the Mac, the ones trained on Kaggle too.
+`evaluate_map.py` runs `COCOeval` from `pycocotools`. The number I report is the AP at IoU 0.50 from its summary. Every run is scored this way on the Mac, the ones trained on Kaggle too. Scoring the same weights twice gave identical numbers, so the scoring adds no noise of its own.
 
-Ultralytics prints its own mAP50 during validation. I use it as a cross-check only.
-
-| Run | `evaluate_map.py` | Ultralytics | Gap |
-|---|---|---|---|
-| A | 0.024 | 0.0258 | about 7% |
-| A2 | 0.455 | 0.4987 | 8.8% |
-| K640 | 0.450 | 0.4831 | 6.8% |
-| A3 | 0.530 | 0.5620 | 5.7% |
-| B | 0.655 | 0.6873 | 4.7% |
-
-The gap is not constant, so one number cannot be converted into the other. The two evaluators agree on the differences between runs: A3 minus K640 is 8.0 points in mine and 7.9 in Ultralytics, B minus A3 is 12.5 points in both. Scoring the same weights twice gave identical numbers, so the scoring adds no noise of its own.
-
-## Experiments
-
-One experiment is one change. Every row is scored on the same 300 validation photos.
-
-| ID | What changed | mAP@0.5 | Training time |
-|---|---|---|---|
-| A | Baseline. Real photos only, YOLOv8n, image size 640, 50 epochs, Ultralytics defaults | 0.024 | about 58 min, Mac |
-| A2 | A with the optimizer set explicitly to AdamW, `lr0=0.001` | 0.455 | about 64 min, Mac |
-| K640 | Control, not an experiment. A2 retrained on a Kaggle T4 with no setting changed | 0.450 | about 12 min, Kaggle T4 |
-| A3 | K640 with image size 960 | 0.530 | about 26 min, Kaggle T4 |
-| B | A3 plus the 2781 synthetic images mixed into training. The data and the number of optimizer steps per epoch change together | 0.655 | about 1 h 52 min, Kaggle T4 |
-| B30 | B with 30 epochs instead of 50, nothing else changed | planned | |
-| C | Pretrain on synthetic images, fine-tune on real photos | planned | |
-
-`cache="ram"` can make runs slightly non-deterministic, so differences below about one point are noise. Every variant has one run, so I do not know the real spread between runs.
-
-### What run A showed
-
-Run A ended at 0.024. The model was undertrained, not overfitted. Its mAP50 rose almost linearly until epoch 50 and the class loss was still falling, from 6.5 to 4.1. The box loss and the dfl loss were flat from about epoch 15.
-
-AP at IoU 0.75 was 0.022, close to the 0.024 at IoU 0.5. When the model found an object, the box was well placed. Classification was the bottleneck.
-
-The cause was the learning rate. With `optimizer=auto` Ultralytics ignores `lr0=0.01` and picked AdamW with a learning rate of 2.7e-05, about 370 times smaller.
-
-### What run A2 showed
-
-Run A2 changed only the optimizer setting. mAP@0.5 went from 0.024 to 0.455, about 19 times higher. Recall went from 0.05 to 0.46. The class loss at epoch 19 was 1.89 instead of 5.06.
-
-- Final precision was 0.63 and recall 0.46, both from the Ultralytics validation pass.
-- AP at IoU 0.75 is 0.422, close to 0.455. The remaining error is mostly classification, not box placement.
-- The run is not overfitted. Validation class loss is 1.20 against 1.05 in training, and it was still falling in the last epochs.
-- Gains flatten at the end while the learning rate decays to 3e-05. Whether more epochs would help is untested.
-
-### Why image size came next
-
-At image size 640 a bottle is about 24 pixels wide. At 960 it is about 36 pixels. My hypothesis was that more pixels per bottle make labels readable and help classification, the weak part in runs A and A2. The Mac was already at about 20.7 GB of 24 GB at 640, so the run went to Kaggle.
-
-### The control run K640
-
-Moving to Kaggle changes the hardware, the backend (CUDA instead of MPS) and the Python version, on top of the image size. To keep the two apart I first repeated A2 on Kaggle with no setting changed. The `args.yaml` files of A2 and K640 differ only in `device`.
-
-K640 scored 0.450 against 0.455 on the Mac. The 0.5 point difference is below the noise level, so the platform does not change the score measurably. It changes the time: 711 seconds of training against 3835 on the Mac. A3 is compared against K640, not against A2.
-
-### What run A3 showed
-
-A3 changed only the image size. mAP@0.5 went from 0.450 to 0.530, which is 8.0 points for 2.2 times the training time.
-
-- AP at IoU 0.75 rose from 0.417 to 0.500.
-- Average recall rose from 0.489 to 0.551. This is the AR line of the COCO summary with at most 100 detections per image.
-- The class loss fell the most, from 1.11 to 0.92 in training. The box loss fell from 0.81 to 0.71 and the dfl loss stayed at 0.95. This fits the hypothesis about readable labels and does not prove it. Losses at different image sizes compare only roughly, because the model scores 18900 candidate boxes per image at 960 and 8400 at 640.
-- The run is not overfitted. Validation class loss is 0.99 against 0.92 in training and was still falling.
-- mAP50 gained 3.6 points over the last 10 epochs in the Ultralytics validation. Whether more epochs help is untested.
-- A3 returned fewer boxes than K640 at confidence 0.001, 29103 against 36424, while finding more objects. The number of boxes says nothing about quality. Why it fell is a hypothesis in [`OBSERVATIONS.md`](OBSERVATIONS.md).
-
-![Training curves of run A3](assets/a3-results.png)
-
-The figure is `results.png` as Ultralytics wrote it for A3. The top row has the three training losses, precision and recall. The bottom row has the validation losses, mAP50 and mAP50-95. The mAP50 in the figure is the Ultralytics number, 0.562 at epoch 50. The table uses 0.530 from `evaluate_map.py`. The kink in the training losses at epoch 41 is mosaic augmentation switching off for the last 10 epochs.
-
-### What run B showed
-
-B adds the 2781 synthetic renders to the 823 real photos, 3604 training photos in total. The validation set, the image size and the settings are the same as in A3. mAP@0.5 went from 0.530 to 0.655, which is 12.5 points. Compared with A2 it is 20 points.
-
-- AP at IoU 0.75 is 0.629 against 0.500 in A3. Boxes are still placed well.
-- In the Ultralytics validation, recall rose from 0.54 to 0.65 and precision from 0.66 to 0.69. The validation class loss fell from 0.995 to 0.847 and the validation box loss stayed at 0.72.
-- An epoch of B has about 4.4 times more optimizer steps than an epoch of A3, 226 against 52, and the number of epochs stayed at 50. At epoch 10 B had made about 2260 steps and had an mAP50 of 0.545 in the Ultralytics validation. A3 made 2600 steps in its whole run and ended at 0.562. The gain therefore comes from the synthetic images and from the extra steps together, and this run does not separate them.
-- The gain per 10 epochs shrinks: +6.8, +4.4, +1.7 and +1.2 points. The learning rate decays to 3e-05 at the end, so I cannot tell from this curve whether a longer run would keep improving.
-- The validation score often moves back. In 19 of 49 epochs mAP50 was lower than in the previous epoch (A3: 10 of 49). The largest drop is epoch 41, from 0.675 to 0.646, where mosaic augmentation switches off. The validation set is 300 photos and many classes have 1 or 2 boxes, so single epochs are noisy.
-- No photo is in both the training list and the validation list. I checked this on the image paths. The check would not catch a render of the same shelf as a validation photo.
-- B returns 31020 boxes for the 300 photos, more than A3 with 29103, and scores higher. The number of boxes says nothing about quality.
-
-![Training curves of run B](assets/b-results.png)
-
-The figure is `results.png` as Ultralytics wrote it for B, in the same layout as the A3 figure. The mAP50 in the figure is the Ultralytics number, 0.687 at epoch 50. The table uses 0.655 from `evaluate_map.py`. The training losses are lower than in A3 because the training set is different, so they do not compare between the two runs. The validation losses are computed on the same 300 photos. The drop in the training losses and the dip in mAP50 at epoch 41 are mosaic augmentation switching off for the last 10 epochs.
-
-### Not done yet
-
-B30 repeats B with 30 epochs instead of 50 and changes nothing else. It shows how much of the score depends on the number of optimizer steps. C, pretraining on the synthetic images and fine-tuning on the real photos, has no result. An error analysis per class would show which classes score near zero, and whether they are the ones with few real photos.
+Ultralytics prints its own mAP50 during validation. My number is lower by 2.9% to 8.8%, and the gap is not constant, so one cannot be converted into the other. Up to B the two agreed on the differences between runs, for example B minus A3 is +0.125 in both. A3-130 against B30 is the first pair where they disagree on the order: mine puts B30 0.019 higher, Ultralytics 0.002 lower. I use my number because it scores one class per box, the way a submission would. The likely cause of the gap is under [Problems observed](#problems-observed).
 
 ## Problems observed
 
 The full log with evidence is in [`OBSERVATIONS.md`](OBSERVATIONS.md). The ones worth knowing:
 
-- **Learning rate chosen automatically.** Described above. Status: measured and confirmed by run A2.
+- **Learning rate chosen automatically.** See run A under [Results](#results). Status: measured and confirmed by run A2.
 - **Slow first epoch.** About 6.3 seconds per batch of 16. Ultralytics uses 0 dataloader workers on MPS, so one thread decoded 12-megapixel JPEGs and built mosaics. With `cache="ram"` a batch takes about 0.8 to 1 second. Status: resolved.
 - **Memory pressure on the Mac.** During run A the training process held about 20.7 GB of 24 GB and swap was about 8.3 GB. Image size 960 at batch 16 does not fit comfortably, so A3 ran on Kaggle. Status: measured.
 - **Duplicate ground-truth boxes.** 94 of the 4097 validation boxes are exact duplicates. Ultralytics drops them and `pycocotools` keeps them. Status: measured.
-- **Two evaluators, two numbers.** `evaluate_map.py` is lower than the Ultralytics mAP50 by 4.7% to 8.8%, depending on the run. From the source code of both libraries, the likely main cause is that Ultralytics validation keeps every class above the confidence threshold for each box (`multi_label=True`), while `predict_val.py` keeps only the best class per box. The duplicate ground-truth boxes and a different interpolation of the precision-recall curve may add to it. The COCO limit of 100 detections applies per image and per class, so it does not bind here. Status: hypothesis from reading the code, not tested.
+- **Two evaluators, two numbers.** `evaluate_map.py` is lower than the Ultralytics mAP50 by 2.9% to 8.8%, depending on the run. From the source code of both libraries, the likely main cause is that Ultralytics validation keeps every class above the confidence threshold for each box (`multi_label=True`), while `predict_val.py` keeps only the best class per box. The duplicate ground-truth boxes and a different interpolation of the precision-recall curve may add to it. The COCO limit of 100 detections applies per image and per class, so it does not bind here. Status: hypothesis from reading the code, not tested.
 - **The scoring script overwrites its output.** `predict_val.py` writes `splits/val_predictions.json` on every call and prints the box count without the weights or the image size. A pasted log does not say which run it belongs to, so I scored one run at a time and wrote the number down before the next. Status: open.
 - **Zero predictions from a smoke model.** After 3 epochs on 10% of the data, `predict_val.py` returned 0 boxes at confidence 0.001. Status: hypothesis.
 - **Pipeline check with the pretrained model.** `yolov8n.pt` without fine-tuning gave 89515 boxes for the 300 photos and mAP 0.000, as expected, because COCO classes do not match the 369 products. That proved the file format. The coordinates and the class shift were confirmed later, when run A gave a non-zero score close to the Ultralytics one.
@@ -183,12 +107,12 @@ The full log with evidence is in [`OBSERVATIONS.md`](OBSERVATIONS.md). The ones 
 ## Limitations
 
 - **Local validation only.** The only number is mAP@0.5 on my own split. The original team's leaderboard score of about 0.6 is from memory and unverified, so I do not use it as a baseline.
-- **One run per variant.** No run was repeated, so the spread between runs is unknown. I treat differences below about one point as noise.
+- **One run per variant.** No run was repeated, so the spread between runs is unknown. I treat differences below about 0.01 as noise.
 - **Validation covers about 237 of 369 classes.** 10 classes appear only in validation. 45 appear only in real training photos and are not evaluated. Many classes have 1 or 2 validation boxes, so their AP is noisy.
 - **17 classes have no training boxes at all.** About 70 appear only on synthetic images.
 - **Duplicates lower the ceiling.** A model returns one box per object, so with duplicate ground truth the achievable mAP is slightly below 1.
 - **Unlabeled products.** A detection on a product outside the 369 classes counts as a false positive. This matches how the test set is scored, but it limits precision.
-- **Synthetic images are renders, not photos.** Run B uses them, and its gain over A3 is not separated from the effect of 4.4 times more optimizer steps at the same 50 epochs.
+- **Synthetic images are renders, not photos.** Their effect is measured on real validation photos, with one run per variant.
 - **The leak check covers image paths only.** No photo is in both the training and the validation list, but a render of the same shelf as a validation photo, or a duplicate under another file name, would not show up.
 - **Few experiments.** This is a solo redo planned for 24 hours of net work. There is no extensive hyperparameter search.
 
@@ -217,11 +141,11 @@ uv run python scripts/evaluate_map.py
 - `train.py` uses `device="mps"`. Change it on other hardware. The run name and the settings are constants at the top of the file.
 - `predict_val.py` has the path to the weights and the image size as constants. Point it at the run you want to score and set the image size used in training.
 - `evaluate_map.py` prints the COCO summary. The second line is the AP at IoU 0.50.
-- `convert_coco_to_yolo.py` has a constant `training_data` at the top. Set it to `"real"` to reproduce runs A to A3 and to `"synth"` for run B.
+- `convert_coco_to_yolo.py` has a constant `training_data` at the top. Set it to `"real"` to reproduce runs A to A3 and A3-130, and to `"synth"` for runs B and B30.
 
 ### Runs on Kaggle
 
-K640, A3 and B were trained on Kaggle. The notebooks of K640 and A3 are in [`notebooks/training/`](notebooks/training/). A notebook clones this repository, copies the images from a private Kaggle dataset, runs the same two preparation scripts and calls `model.train` with the A2 settings and `device=0`. Those two differ only in `NAME` and `IMGSZ`, and their cell outputs hold the full training logs. B used the same notebook with another `NAME`, a clone of the branch that has the `training_data` switch, and 3904 labels expected in the second check.
+K640, A3, B, B30 and A3-130 were trained on Kaggle. The notebooks of K640 and A3 are in [`notebooks/training/`](notebooks/training/). A notebook clones this repository, copies the images from a private Kaggle dataset, runs the same two preparation scripts and calls `model.train` with the A2 settings and `device=0`. Those two differ only in `NAME` and `IMGSZ`, and their cell outputs hold the full training logs. B used the same notebook with another `NAME`, a clone of the branch that has the `training_data` switch, and 3904 labels expected in the second check. B30 and A3-130 changed the number of epochs as well. A3-130 cloned a branch with the switch set to `"real"` and expected 1123 labels.
 
 The dataset is private, so the notebooks will not run for anyone else as they are. I downloaded `best.pt` from the notebook output and scored it on the Mac with `predict_val.py` and `evaluate_map.py`.
 
@@ -238,7 +162,8 @@ LIMITATIONS.md           limits of the measurement and the data
 scripts/validation/      validation split, class coverage check, prediction on validation, train and validation list check
 scripts/training/        label conversion, dataset config, training
 scripts/evaluation/      ground truth for the validation photos, perfect-answer check
-scripts/evaluate_map.py  mAP with pycocotoolssplits/val_image_ids.json  the frozen 300 validation ids
+scripts/evaluate_map.py  mAP with pycocotools
+splits/val_image_ids.json  the frozen 300 validation ids
 predict.py               organizers' prediction CLI, see below
 notebooks/               notebooks from the organizers' template
 notebooks/training/      Kaggle notebooks for runs K640 and A3, with training logs

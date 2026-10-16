@@ -14,9 +14,9 @@ Collected during the work so the README can state them honestly. Add new items a
 
 - **Unlabeled products.** Only products from the 369 classes have boxes. Shelves also hold many others (e.g. Jack Daniel's and Jim Beam bottles in one example photo) with no box. The model learns them as background, and a detection on them counts as a false positive. This matches how the test set is scored, but it is a ceiling on precision.
 - **Data is not part of the repo.** The dataset comes from the organizers (Asseco), publication rules are unconfirmed. Only a few example images with boxes may be shown. Files from the organizers (`taxonomy.json`, `test_images.json`) are theirs, and the repo license does not cover the data.
-- **Synthetic images** (`SIDG_TRAIN`, `SIDG_SYNTH_TRAIN`, 2781 of 3904) are renders, not photos. The test set is real photos only. Run B trains on them (3604 training photos), and its +12.5 points over A3 are not separated from the effect of 4.4 times more optimizer steps per epoch at the same 50 epochs.
+- **Synthetic images** (`SIDG_TRAIN`, `SIDG_SYNTH_TRAIN`, 2781 of 3904) are renders, not photos. The test set is real photos only. Runs B and B30 train on them (3604 training photos). At the same number of optimizer steps they add +0.019: B30 scores 0.648 and A3-130, real photos only, 0.629. One run per variant, so the spread is unknown.
 
 ## Scope
 
 - **Solo redo, planned for 24 h net of work.** I stopped timing during the experiments and most likely went over it. Few experiments, no extensive hyperparameter search.
-- **One run per variant.** No run was repeated, so the spread between runs is unknown. Differences below about one point are treated as noise.
+- **One run per variant.** No run was repeated, so the spread between runs is unknown. Differences below about 0.01 are treated as noise.
